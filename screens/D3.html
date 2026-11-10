@@ -1,0 +1,182 @@
+<section class="scr" id="D3" data-name="3D 실내 설명서" aria-label="D3 3D 실내 설명서">
+  <div class="cl">
+    <div class="cl-speed num">0</div>
+    <div class="cl-unit">km/h</div>
+    <div class="cl-gear">P</div>
+    <div class="cl-range num">612km <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+      <rect x="5" y="4" width="9" height="16" rx="1.5"/>
+      <path d="M5 10h9M14 9h2.5a1.5 1.5 0 011.5 1.5V17a1.5 1.5 0 003 0V8l-3-3"/>
+    </svg></div>
+    <img class="cl-icons" src="assets/cluster-icons.png" alt=""/>
+    <div class="cl-ready">READY</div>
+    <img class="cl-cars" src="assets/cluster-cars.png" alt="주변 차량 표시"/>
+    <div class="cl-odo num">5,035km</div>
+    <div class="cl-temp">26°C</div>
+    <div class="cl-div"></div>
+    <div class="cl-grip"></div>
+    <div class="cl-acc">
+      <div><div class="t">누적 정보</div><span class="reset"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+        <path d="M20 12a8 8 0 11-2.3-5.6"/>
+        <path d="M20 4v4.5h-4.5"/>
+      </svg> 초기화</span></div>
+      <div class="m">
+        <div class="l">거리</div>
+        <div class="v num">5,035</div>
+        <div class="u">km</div>
+      </div>
+      <div class="m">
+        <div class="l">시간</div>
+        <div class="v num">112:40</div>
+        <div class="u">h:m</div>
+      </div>
+      <div class="m">
+        <div class="l">연비</div>
+        <div class="v num">16.2</div>
+        <div class="u">km/L</div>
+      </div>
+    </div>
+  </div>
+  <img class="sb-l" src="assets/status-left.png" alt=""/>
+  <img class="sb-r" src="assets/status-right.png" alt=""/>
+  <div class="sb-t num">6:15 PM</div>
+  <div class="app">
+    <div class="hd">
+      <div class="logo"><span class="ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+        <circle cx="12" cy="12" r="8.5"/>
+        <circle cx="12" cy="12" r="2.2"/>
+        <path d="M3.8 10.5h6M14.2 10.5h6M12 14.2v6.3"/>
+      </svg></span>Drive Coach</div>
+      <nav class="tabs" aria-label="주요 메뉴"><a href="#A1" class="tab">홈</a><a href="#C2" class="tab">미션</a><a href="#A3" class="tab">첫길 리허설</a><a href="#E2" class="tab">리포트</a><a href="#D2" class="tab on">내 차</a></nav>
+      <div class="hd-r">
+        <span class="sim">시뮬레이션</span>
+        <a href="#F2" class="prof" aria-label="운전자 프로필"><span class="av">지</span>지민</a>
+        <a href="#F4" class="gear" aria-label="설정"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#33383F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>
+        </svg></a>
+      </div>
+    </div>
+    <div class="bd">
+      <div class="card" style="position:absolute;left:0;top:0;width:540px;height:504px;overflow:hidden">
+        <div id="d3-wrap" style="position:relative;width:540px;height:448px;background:linear-gradient(180deg,#DDE4EE,#F4F6F9)">
+          <div id="d3-fallback" style="position:absolute;inset:0"><svg width="540" height="448" viewBox="0 0 540 448" role="img" aria-label="운전석 실내 3D 모델 예시" style="display:block">
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#E4EAF2"/>
+                <stop offset="1" stop-color="#F4F6F9"/>
+              </linearGradient>
+              <linearGradient id="dash" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#4A505A"/>
+                <stop offset="1" stop-color="#2A2E35"/>
+              </linearGradient>
+              <linearGradient id="low" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#C9CDD4"/>
+                <stop offset="1" stop-color="#AEB3BB"/>
+              </linearGradient>
+              <radialGradient id="glow">
+                <stop offset="0" stop-color="#1F6FE0" stop-opacity=".45"/>
+                <stop offset="1" stop-color="#1F6FE0" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <rect width="540" height="448" fill="url(#sky)"/>
+            <path d="M0 120 Q270 70 540 120 L540 0 L0 0Z" fill="#D5DCE6"/>
+            <path d="M60 130 L250 108 L248 300 L60 300Z" fill="#fff" opacity=".0"/>
+            <!-- dashboard -->
+            <path d="M-10 168 Q270 112 550 168 L550 262 Q270 232 -10 262Z" fill="url(#dash)"/>
+            <path d="M-10 168 Q270 112 550 168" fill="none" stroke="#6B717C" stroke-width="2"/>
+            <!-- wide display -->
+            <path d="M72 150 Q250 122 430 140 L428 186 Q250 170 74 194Z" fill="#14171B" stroke="#5C626C" stroke-width="1.5"/>
+            <path d="M90 160 Q160 150 230 144 L230 176 Q160 180 92 188Z" fill="#1E232A"/>
+            <text x="118" y="176" font-size="15" fill="#E6E9EE" font-weight="600" font-family="Pretendard Variable,Pretendard,sans-serif">P</text>
+            <path d="M250 143 Q330 138 412 146 L410 176 Q330 168 250 172Z" fill="#26303C"/>
+            <path d="M262 160 h40 M262 166 h28" stroke="#5E7DA8" stroke-width="3" stroke-linecap="round"/>
+            <!-- lower dash / console -->
+            <path d="M-10 262 Q270 232 550 262 L550 448 L-10 448Z" fill="url(#low)"/>
+            <path d="M330 252 L420 250 L470 448 L350 448Z" fill="#9BA1AA"/>
+            <rect x="352" y="300" width="72" height="34" rx="6" fill="#2A2E35"/>
+            <circle cx="372" cy="317" r="7" fill="#3B414A" stroke="#6B717C"/>
+            <circle cx="404" cy="317" r="7" fill="#3B414A" stroke="#6B717C"/>
+            <!-- vents -->
+            <rect x="440" y="196" width="70" height="20" rx="6" fill="#23272D"/>
+            <rect x="26" y="206" width="54" height="20" rx="6" fill="#23272D"/>
+            <!-- steering column + wheel (perspective) -->
+            <path d="M150 300 L190 448 H120 Z" fill="#2E3238"/>
+            <ellipse cx="160" cy="292" rx="126" ry="104" fill="none" stroke="#1C1F24" stroke-width="22"/>
+            <ellipse cx="160" cy="292" rx="126" ry="104" fill="none" stroke="#3A3F47" stroke-width="3" transform="translate(0 -6)"/>
+            <path d="M44 300 Q100 300 132 296 M188 296 Q220 300 276 300" stroke="#1C1F24" stroke-width="20" stroke-linecap="round"/>
+            <path d="M150 318 L146 390 M170 318 L174 390" stroke="#1C1F24" stroke-width="16" stroke-linecap="round"/>
+            <ellipse cx="160" cy="300" rx="34" ry="26" fill="#2B2F36" stroke="#474D56" stroke-width="2"/>
+            <path d="M150 296 h20 M147 304 h26" stroke="#7C838E" stroke-width="2" stroke-linecap="round"/>
+            <!-- left spoke buttons (highlight) -->
+            <ellipse cx="96" cy="296" rx="46" ry="38" fill="url(#glow)"/>
+            <rect x="74" y="280" width="44" height="34" rx="6" fill="#3A404A" stroke="#4E9BFF" stroke-width="2.5"/>
+            <rect x="79" y="285" width="15" height="11" rx="2" fill="#5A616C"/>
+            <rect x="98" y="285" width="15" height="11" rx="2" fill="#5A616C"/>
+            <rect x="79" y="300" width="34" height="9" rx="2" fill="#5A616C"/>
+            <!-- right spoke buttons -->
+            <rect x="204" y="280" width="40" height="32" rx="6" fill="#3A404A" stroke="#5C636E" stroke-width="1.5"/>
+            <!-- stalks -->
+            <path d="M262 252 L322 240" stroke="#22262B" stroke-width="9" stroke-linecap="round"/>
+            <path d="M58 254 L8 244" stroke="#22262B" stroke-width="9" stroke-linecap="round"/>
+            <!-- other hotspots -->
+            <g>
+              <circle cx="318" cy="241" r="13" fill="#fff" fill-opacity=".9" stroke="#9AA0A8" stroke-width="2"/>
+              <circle cx="318" cy="241" r="4" fill="#646B76"/>
+            </g>
+            <g><circle cx="388" cy="317" r="13" fill="#fff" fill-opacity=".0" stroke="#9AA0A8" stroke-width="2" stroke-dasharray="3 3"/></g>
+            <g>
+              <circle cx="476" cy="206" r="13" fill="#fff" fill-opacity=".9" stroke="#9AA0A8" stroke-width="2"/>
+              <circle cx="476" cy="206" r="4" fill="#646B76"/>
+            </g>
+            <g>
+              <circle cx="388" cy="358" r="13" fill="#fff" fill-opacity=".9" stroke="#9AA0A8" stroke-width="2"/>
+              <circle cx="388" cy="358" r="4" fill="#646B76"/>
+            </g>
+            <!-- callout -->
+            <circle cx="96" cy="296" r="20" fill="none" stroke="#1F6FE0" stroke-width="2"/>
+            <line x1="96" y1="276" x2="96" y2="232" stroke="#1F6FE0" stroke-width="2"/>
+          </svg></div>
+          <div id="d3-canvas" style="position:absolute;inset:0"></div>
+          <div id="d3-markers" style="position:absolute;inset:0;pointer-events:none"></div>
+          <div class="row" style="position:absolute;left:12px;top:12px;gap:6px;background:#fff;border-radius:10px;padding:6px 10px;font-size:12px;box-shadow:0 1px 4px rgba(0,0,0,.12)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+            <path d="M20 12a8 8 0 11-2.3-5.6"/>
+            <path d="M20 4v4.5h-4.5"/>
+          </svg> 드래그해서 둘러보기</div>
+          <div id="d3-views" class="row segc" style="position:absolute;right:12px;top:12px;background:#fff;border-radius:10px;padding:3px;box-shadow:0 1px 4px rgba(0,0,0,.12)"><a href="#" class="tab on" data-view="driver" style="padding:6px 10px;font-size:12px">운전석</a><a href="#" class="tab" data-view="center" style="padding:6px 10px;font-size:12px">센터</a><a href="#" class="tab" data-view="zoom" style="padding:6px 10px;font-size:12px">확대</a></div>
+        </div>
+        <div class="row xs" style="height:56px;padding:0 16px;gap:14px;border-top:1px solid #F0F0F3">
+          <span class="row" style="gap:5px"><i class="dot" style="background:#1F6FE0"></i>선택한 기능</span><span class="row" style="gap:5px"><i class="dot" style="background:#9AA0A8"></i>눌러서 다른 기능 보기</span>
+          <span class="row" style="margin-left:auto;gap:5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#646B76" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+            <path d="M12 6.5c-2-1.5-5-2-8-1.5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z"/>
+            <path d="M12 6.5v13"/>
+          </svg>차량 설명서 기준 위치 · 대표 차종 모델</span>
+        </div>
+      </div>
+      <div class="card" style="position:absolute;left:552px;top:0;width:302px;height:504px;padding:16px 18px;display:flex;flex-direction:column">
+        <a href="#D2" class="lnk" style="font-size:12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M14.5 6l-6 6 6 6"/></svg> 기능 목록</a>
+        <div id="d3-name" class="h2" style="margin-top:6px"></div>
+        <div id="d3-sub" class="xs"></div>
+        <div class="row" style="justify-content:space-between;margin-top:10px"><span class="sm" style="font-weight:600;color:#33383F">학습 단계</span><span id="d3-prog" class="num sm"></span></div>
+        <div class="row" style="gap:8px;margin-top:8px;font-size:14px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1FB83A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>위치 찾기<span class="xs" style="margin-left:auto;color:#1A7F33">완료</span></div>
+        <div style="margin-top:8px;background:#F6F7F9;border-radius:12px;padding:11px 12px">
+          <div class="row" style="gap:8px;font-size:14px;font-weight:600"><span style="width:18px;height:18px;border-radius:50%;background:#1F6FE0;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center">2</span>조건과 주의<span class="chip blue" style="margin-left:auto">지금</span></div>
+          <div class="xs" style="margin-top:8px;font-weight:600;color:#33383F">이럴 때 써요</div>
+          <div id="d3-when" style="font-size:13px;line-height:1.5;margin-top:2px"></div>
+          <div class="row xs" style="margin-top:8px;gap:4px;font-weight:600;color:#C8161A"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8161A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+            <path d="M12 4l9 16H3z"/>
+            <path d="M12 10v4.5"/>
+            <circle cx="12" cy="17.3" r=".4"/>
+          </svg>주의하세요</div>
+          <ul id="d3-caut" style="margin:3px 0 0;padding-left:17px;font-size:13px;line-height:1.5"></ul>
+        </div>
+        <div class="row mut" style="gap:8px;margin-top:10px;font-size:14px"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid #9AA0A8;font-size:10px;display:flex;align-items:center;justify-content:center">3</span>가상 실습<span class="xs" style="margin-left:auto">다음</span></div>
+        <div class="row" style="gap:8px;margin-top:auto"><a href="#D4" class="btn pri" style="flex:1">직접 눌러보기 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M9.5 6l6 6-6 6"/></svg></a><a href="#" data-say="feature" class="btn sec" style="width:52px" aria-label="음성 설명 듣기"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
+          <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/>
+          <path d="M15.5 9a4.5 4.5 0 010 6M18 6.5a8 8 0 010 11"/>
+        </svg></a></div>
+      </div>
+    </div>
+  </div>
+  <img class="dock" src="assets/dock.png" alt="차량 앱 독"/>
+  <a href="#" class="dock-hit dc" aria-label="Drive Coach 열기"></a><a href="#" class="dock-hit grid" aria-label="차량 홈 화면"></a>
+</section>

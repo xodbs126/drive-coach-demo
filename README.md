@@ -117,7 +117,7 @@ python -m http.server 8000     # 또는 npx serve
 # 브라우저에서 http://localhost:8000
 ```
 
-`index.html`을 더블클릭해서 열어도 대부분 동작하지만, 3D 실내(D3)는 2D 그림으로 대체되고 폰트가 시스템 폰트로 바뀔 수 있어요.
+`index.html`을 더블클릭해서(`file://`) 열면 화면 파일(`screens/`)을 불러오지 못해 빈 화면이 나와요. 꼭 위처럼 로컬 서버로 여세요.
 
 ## 녹화 팁
 
@@ -148,7 +148,8 @@ python -m http.server 8000     # 또는 npx serve
 ## 폴더 구성
 
 ```
-index.html          차량 홈(L0) + 앱 화면 17개 (A1~F4) + 실행 화면
+index.html          빈 스테이지 틀 + 실행(스플래시) 화면
+screens/            화면 하나에 파일 하나 (L0 차량 홈 + 앱 화면 17개 A1~F4)
 css/                화면 스타일 · 인터랙션 스타일
 js/data.js          시나리오 데이터 (구간, 음성 대본, 미션, 차량 기능)
 js/app.js           라우터 · 리허설 · 모의 주행 · 음성 · 실습 로직

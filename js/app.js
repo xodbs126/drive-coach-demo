@@ -84,6 +84,7 @@
   /* ------------------------------------------------------------ router */
   let cur = null;
   function show() {
+    if (!$(".scr")) return; // screens/*.html not loaded yet
     let id = (location.hash || "#A1").slice(1);
     if (!document.getElementById(id) || !/^([A-F]\d|L0)$/.test(id)) id = "L0";
     if (cur === id) return;
@@ -544,9 +545,23 @@
   });
 
   /* ------------------------------------------------------------ boot */
-  buildPanel();
-  if (!location.hash) history.replaceState(null, "", "#L0");
-  show();
-  syncSettings();
-  setTimeout(() => toast("` 키: 시연 패널 · F: 전체 화면", 3200), 600);
+  // Each screen lives in screens/<ID>.html. Order matters: it is the DOM order
+  // inside #stage (and the order of the demo panel shortcuts).
+  const SCREENS = ["L0", "A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "B4", "C2", "D2", "D3", "D4", "E2", "E3", "F2", "F4"];
+  function loadScreens() {
+    return Promise.all(SCREENS.map(id => fetch(`screens/${id}.html`).then(r => {
+      if (!r.ok) throw new Error(`screens/${id}.html: HTTP ${r.status}`);
+      return r.text();
+    }))).then(parts => $("#splash").insertAdjacentHTML("beforebegin", parts.join("")));
+  }
+  loadScreens().then(() => {
+    buildPanel();
+    if (!location.hash) history.replaceState(null, "", "#L0");
+    show();
+    syncSettings();
+    setTimeout(() => toast("` 키: 시연 패널 · F: 전체 화면", 3200), 600);
+  }).catch(err => {
+    console.error("화면 파일을 불러오지 못했어요", err);
+    toast("화면을 불러오지 못했어요 · python -m http.server로 열어 주세요", 60000);
+  });
 })();
