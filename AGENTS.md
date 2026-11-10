@@ -84,7 +84,7 @@ fonts/              Pretendard Variable
 - **라우팅:** 해시 기반이에요(`#A3`). `show()`가 `.scr.on`을 바꾸고 `enter(id)`/`leave(id)`를 호출해요. 화면 이동은 `<a href="#B2">`, 동작만 하는 링크는 `<a href="#">` + id나 data 속성을 써요. 클릭은 `document`에 한 번 위임해서 처리해요.
 - **상태:** `ST` 객체 하나에 담겨요. 새로고침하면 초기화돼요(녹화 반복용이라 일부러 저장하지 않아요). 주요 필드: `seg`, `checked`, `feature`, `learned`, `rev`, `coach`, `freq`, `voice`, `speed`
 - **모의 주행(A5):** `D.route`(월드 좌표) + `D.kmAnchors`(경로 거리 → km)로 위치를 구하고, `D.speeds`(km별 목표 속도)를 부드럽게 따라가요. `D.script`의 음성 이벤트를 km 기준으로 발생시켜요. 음성이 나오는 동안에는 재생 속도와 상관없이 천천히 가요(`K = 4`). 이벤트의 `ttl`(km)을 넘기면 그 코칭은 생략돼요. review 이벤트는 `ST.learned[f] && ST.rev[f]`일 때만 나와요.
-- **TTS:** `speak()` 큐에서 nav는 항상 맨 앞에 끼워 넣어요. 한국어 음성이 2개 이상이면 내비와 코칭에 다른 목소리를 써요. Chrome이 `onend`를 빠뜨리는 경우가 있어서 타임아웃 폴백이 있어요.
+- **TTS:** `speak()` 큐에서 nav는 항상 맨 앞에 끼워 넣어요. `voiceScore()`가 한국어 음성을 자연스러운 여성 음성 순으로 정렬해요(Edge "SunHi Online (Natural)" → 다른 Natural·온라인 음성 → OS 음성). 내비는 1순위를 쓰고, 코칭은 비슷한 품질의 다른 음성이 있으면 그걸 써요. 시연 패널에서 직접 고를 수 있어요(`ST.navVoice`, `ST.coachVoice`). 피치는 바꾸지 않아요. Chrome이 `onend`를 빠뜨리는 경우가 있어서 타임아웃 폴백이 있어요.
 - **지도:** 실제 지도가 아니라 가상 도시를 SVG로 그린 스타일 지도예요. 경로 좌표: 집(120,560) → 시청 사거리(440,410) → 회사(800,330). A5는 `#a5-map`의 viewBox를 움직여 차를 따라가요.
 
 ## 시나리오 데이터 (일관성 유지)
