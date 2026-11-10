@@ -10,6 +10,7 @@
     seg: 3, checked: new Set([1, 2]), feature: "scc", prog: "commute", b3: 4,
     learned: { wiper: true }, rev: { wiper: true, scc: false, lka: false },
     rec: true, coach: true, freq: 2, voice: true, speed: 1, profile: "지민",
+    navVoice: "", coachVoice: "", // voiceURI picked in the demo panel ("" = automatic)
   };
 
   /* ------------------------------------------------------------ helpers */
@@ -46,8 +47,27 @@
   /* ------------------------------------------------------------ speech (TTS) */
   const TTS = { q: [], busy: false, voices: [], cur: null };
   const hasTTS = "speechSynthesis" in window;
-  function loadVoices() { if (hasTTS) TTS.voices = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)); }
+  // Rank Korean voices so the softest, most natural female voice comes first:
+  // Edge "SunHi Online (Natural)" > other Natural/online voices (Chrome "Google 한국의") > OS voices (Heami).
+  const FEMALE = /SunHi|JiMin|SeoHyeon|SoonBok|YuJin|Yuna|Google|Heami/i;
+  function voiceScore(v) {
+    return (/Natural/i.test(v.name) ? 40 : 0) + (/Online|Google/i.test(v.name) || !v.localService ? 20 : 0)
+      + (FEMALE.test(v.name) ? 10 : 0) + (/SunHi/i.test(v.name) ? 5 : 0);
+  }
+  function loadVoices() {
+    if (!hasTTS) return;
+    TTS.voices = speechSynthesis.getVoices().filter(v => /^ko/i.test(v.lang)).sort((a, b) => voiceScore(b) - voiceScore(a));
+    syncVoiceSelects();
+  }
   if (hasTTS) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  /* nav: best voice. coach: a different voice when one of similar quality exists, so the two are easy to tell apart */
+  function pickVoice(kind) {
+    const v = TTS.voices, want = kind === "nav" ? ST.navVoice : ST.coachVoice;
+    const chosen = want && v.find(x => x.voiceURI === want);
+    if (chosen) return chosen;
+    if (kind === "nav" || !v[1]) return v[0];
+    return voiceScore(v[1]) >= 50 ? v[1] : v[0];
+  }
 
   /* item: {text, kind:'nav'|'coach'|'review'|'ui', onstart, onend, stale()} */
   function speak(item) {
@@ -70,9 +90,9 @@
     if (ST.voice && hasTTS) {
       const u = new SpeechSynthesisUtterance(item.text);
       u.lang = "ko-KR";
-      const v = TTS.voices;
-      if (item.kind === "nav") { if (v[0]) u.voice = v[0]; u.rate = 1.08; u.pitch = 1.0; }
-      else { const alt = v[1] || v[0]; if (alt) u.voice = alt; u.rate = 1.02; u.pitch = v[1] ? 1.0 : 1.25; }
+      const v = pickVoice(item.kind === "nav" ? "nav" : "coach");
+      if (v) u.voice = v;
+      u.rate = item.kind === "nav" ? 1.03 : 1.0; u.pitch = 1.0;
       u.onend = done; u.onerror = done;
       speechSynthesis.speak(u);
       setTimeout(done, est * 1.4 + 1500); // Chrome sometimes drops onend
@@ -514,9 +534,30 @@
 <label><input type="checkbox" id="p-voice"> 음성(TTS) 재생</label>
 <label><input type="checkbox" id="p-coach"> 운전 코칭 켜기</label>
 <label><input type="checkbox" id="p-scc"> 크루즈 학습 완료 + 주행 중 복습 동의</label></div>
+<div class="grp"><b>목소리</b>
+<label class="selp">내비 <select id="p-nav-voice"></select></label>
+<label class="selp">코칭 <select id="p-coach-voice"></select></label>
+<button id="p-voice-test" style="width:100%;margin-top:4px">두 목소리 들어보기</button>
+<div class="muted" style="margin:6px 0 0">가장 자연스러운 목소리는 Edge의 "SunHi (Natural)"예요. Chrome은 "Google 한국의"를 써요.</div></div>
 <div class="grp"><b>단축키</b><div class="muted" style="margin:0;line-height:1.7"><kbd>Space</kbd> 모의 주행 일시정지 · <kbd>R</kbd> 현재 화면 다시 시작<br><kbd>F</kbd> 전체 화면 · <kbd>\`</kbd> 패널 열기/닫기</div></div>
 <div class="grp"><button id="p-reset" style="width:100%">처음 상태로 초기화</button></div>`;
   }
+  const VOICE_SAMPLE = { nav: "300미터 앞에서 우회전입니다.", coach: "오른쪽 끝 차로를 미리 유지해요." };
+  function voiceLabel(v) {
+    return v.name.replace(/^(Microsoft|Google)\s+/, "").replace(/\s*-\s*Korean.*$/i, "").replace(/\s*\(Korean.*\)$/i, "") + (v.localService ? "" : " · 온라인");
+  }
+  function syncVoiceSelects() {
+    [["p-nav-voice", "nav"], ["p-coach-voice", "coach"]].forEach(([id, kind]) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = pickVoice(kind);
+      sel.innerHTML = TTS.voices.length
+        ? TTS.voices.map(v => `<option value="${v.voiceURI}"${v === cur ? " selected" : ""}>${voiceLabel(v)}</option>`).join("")
+        : "<option>한국어 음성 없음</option>";
+      sel.disabled = !TTS.voices.length;
+    });
+  }
+  function previewVoice(kind) { hush(); speak({ text: VOICE_SAMPLE[kind], kind: kind === "nav" ? "nav" : "ui" }); }
   function syncPanel() {
     if (P.hidden) return;
     $$("[data-p-go]", P).forEach(b => b.classList.toggle("on", b.dataset.pGo === cur));
@@ -528,11 +569,14 @@
     if (b.dataset.pGo) go(b.dataset.pGo);
     if (b.dataset.pSpeed) ST.speed = +b.dataset.pSpeed;
     if (b.id === "p-reset") { location.hash = "A1"; location.reload(); }
+    if (b.id === "p-voice-test") { hush(); speak({ text: VOICE_SAMPLE.nav, kind: "nav" }); speak({ text: VOICE_SAMPLE.coach, kind: "ui" }); }
     syncPanel();
   });
   P.addEventListener("change", (e) => {
     if (e.target.id === "p-voice") { ST.voice = e.target.checked; if (!ST.voice) hush(); }
     if (e.target.id === "p-coach") { ST.coach = e.target.checked; if (cur === "A5") coachIdle(); }
+    if (e.target.id === "p-nav-voice") { ST.navVoice = e.target.value; previewVoice("nav"); }
+    if (e.target.id === "p-coach-voice") { ST.coachVoice = e.target.value; previewVoice("coach"); }
     if (e.target.id === "p-scc") { ST.learned.scc = e.target.checked || ST.learned.scc; ST.rev.scc = e.target.checked; syncLearn(); }
   });
   document.addEventListener("keydown", (e) => {
@@ -556,6 +600,7 @@
   }
   loadScreens().then(() => {
     buildPanel();
+    syncVoiceSelects();
     if (!location.hash) history.replaceState(null, "", "#L0");
     show();
     syncSettings();
