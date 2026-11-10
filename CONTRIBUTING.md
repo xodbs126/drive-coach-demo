@@ -85,5 +85,5 @@ git push --force-with-lease
 
 ## 올리면 안 되는 것
 
-- 기획서 원문과 내부 자료는 `docs/private/`에만 둬요(gitignore 대상).
+- 개인 메모나 팀 밖으로 나가면 안 되는 자료는 `docs/private/`에 둬요(gitignore 대상). 기획서 원문은 `docs/`에 올려 함께 봐요.
 - 개인 설정: `CLAUDE.local.md`, `.claude/settings.local.json`, `.vscode/`
