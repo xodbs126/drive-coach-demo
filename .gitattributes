@@ -1,0 +1,8 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.woff2 binary
+
+# 외부 라이브러리는 diff에서 접어요
+vendor/** linguist-vendored -diff
