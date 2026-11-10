@@ -16,7 +16,7 @@ python -m http.server 8000         # http://localhost:8000
 
 ## 작업 흐름
 
-1. **화면 담당을 나눠요.** 시작 전에 팀 채팅이나 GitHub Issue에 "A5 작업할게요"처럼 남겨요. `index.html` 하나에 모든 화면이 있어서, 같은 화면을 동시에 고치면 충돌이 나요.
+1. **화면 담당을 나눠요.** 시작 전에 팀 채팅이나 GitHub Issue에 "A5 작업할게요"처럼 남겨요. 화면은 `screens/<ID>.html`로 나뉘어 있지만, 같은 화면 파일이나 `js/app.js`를 동시에 고치면 충돌이 나요.
 2. **최신 main에서 브랜치를 만들어요.**
    ```bash
    git switch main
@@ -81,7 +81,7 @@ git rebase --continue
 git push --force-with-lease
 ```
 
-`index.html`의 긴 줄에서 충돌이 나면 혼자 정리하지 말고, 그 화면을 고친 팀원과 같이 봐요. `--force`가 아니라 `--force-with-lease`를 써요.
+긴 줄(SVG 지도 등)에서 충돌이 나면 혼자 정리하지 말고, 그 화면을 고친 팀원과 같이 봐요. `--force`가 아니라 `--force-with-lease`를 써요.
 
 ## 올리면 안 되는 것
 
