@@ -1,0 +1,13 @@
+# 기획서 원문 등 비공개 자료
+docs/private/
+
+# 개인 설정
+CLAUDE.local.md
+.claude/settings.local.json
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
