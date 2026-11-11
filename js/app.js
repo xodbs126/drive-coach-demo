@@ -45,7 +45,7 @@
   addEventListener("resize", fit); fit();
 
   /* ------------------------------------------------------------ speech (TTS) */
-  const TTS = { q: [], busy: false, voices: [], cur: null };
+  const TTS = { q: [], busy: false, voices: [], cur: null, gen: 0 }; // gen: bumped by hush() so late callbacks of cancelled lines are ignored
   const hasTTS = "speechSynthesis" in window;
   // Rank Korean voices so the softest, most natural female voice comes first:
   // Edge "SunHi Online (Natural)" > other Natural/online voices (Chrome "Google 한국의") > OS voices (Heami).
@@ -85,8 +85,8 @@
     TTS.busy = true; TTS.cur = item;
     item.onstart && item.onstart();
     let ended = false;
-    const est = 500 + item.text.length * 85;
-    const done = () => { if (ended) return; ended = true; TTS.busy = false; TTS.cur = null; item.onend && item.onend(); setTimeout(pump, 180); };
+    const gen = TTS.gen, est = 500 + item.text.length * 85;
+    const done = () => { if (ended) return; ended = true; if (gen !== TTS.gen) return; TTS.busy = false; TTS.cur = null; item.onend && item.onend(); setTimeout(pump, 180); };
     if (ST.voice && hasTTS) {
       const u = new SpeechSynthesisUtterance(item.text);
       u.lang = "ko-KR";
@@ -98,7 +98,7 @@
       setTimeout(done, est * 1.4 + 1500); // Chrome sometimes drops onend
     } else setTimeout(done, est);
   }
-  function hush() { TTS.q = []; if (hasTTS) speechSynthesis.cancel(); TTS.busy = false; TTS.cur = null; }
+  function hush() { TTS.gen++; TTS.q = []; if (hasTTS) speechSynthesis.cancel(); TTS.busy = false; TTS.cur = null; }
   function sayUI(text) { hush(); speak({ text, kind: "ui" }); }
 
   /* ------------------------------------------------------------ router */
@@ -118,13 +118,14 @@
   addEventListener("hashchange", show);
 
   function enter(id) {
-    ({ A3: renderA3, A4: enterA4, A5: enterA5, B3: renderB3, C2: renderC2, D2: syncLearn, D3: enterD3, D4: enterD4, F4: syncSettings }[id] || (() => {}))();
+    ({ A3: renderA3, A4: enterA4, A5: enterA5, B3: renderB3, B4: renderB4, C2: renderC2, D2: syncLearn, D3: enterD3, D4: enterD4, F4: syncSettings }[id] || (() => {}))();
   }
   function leave(id) {
     hush();
     if (id === "A5") stopSim();
     if (id === "A4") cancelAnimationFrame(A4.raf);
     if (id === "D3" && window.D3S) window.D3S.pause();
+    if (id === "D4" && D4S.p3) D4S.p3.pause();
   }
 
   /* ------------------------------------------------------------ A3 rehearsal */
@@ -325,6 +326,16 @@
     $("#b3-name").textContent = D.b3names[ST.b3];
   }
 
+  /* ------------------------------------------------------------ B4: first card follows the point saved in B3 */
+  function renderB4() {
+    const r = ST.b4;
+    if (!r) return; // not saved yet: keep the default card (회전교차로)
+    $("#b4-ic").innerHTML = icon(D.segs[r.seg - 1].ic, 28, "#0B2A5B");
+    $("#b4-title").innerHTML = D.b4titles[r.seg];
+    $("#b4-why").textContent = "방금 어렵다고 표시했어요" + (r.why.length ? " · " + r.why.join(", ") : "");
+    $("#b4-go").dataset.goseg = r.seg;
+  }
+
   /* ------------------------------------------------------------ C2 */
   function renderC2() {
     const learnedScc = !!ST.learned.scc;
@@ -356,33 +367,111 @@
   }
 
   /* ------------------------------------------------------------ D (features) */
+  /* learning stage 0..3 (1 위치 찾기 · 2 조건과 주의 · 3 가상 실습) */
+  const stageOf = (k) => (ST.learned[k] ? 3 : parseInt(D.features[k].prog, 10) || 0);
   function syncLearn() {
     $$("[data-learn]").forEach(el => {
       const k = el.dataset.learn;
       if (ST.learned[k]) { el.textContent = "학습 완료"; el.style.color = "#1A7F33"; }
     });
+    const n = { done: 0, prog: 0, todo: 0 };
+    Object.keys(D.features).forEach(k => n[ST.learned[k] ? "done" : stageOf(k) > 0 ? "prog" : "todo"]++);
+    Object.entries(n).forEach(([k, v]) => { const e = $("#d2-n-" + k); if (e) e.textContent = v; });
+    $$("[data-revchip]").forEach(el => {
+      const k = el.dataset.revchip;
+      el.innerHTML = ST.learned[k] && ST.rev[k] ? '<span class="chip blue">주행 중 추천 켜짐</span>' : "";
+    });
     const st = $("#f4-scc-st");
     if (st && ST.learned.scc) st.textContent = "학습 완료 · 고속도로 등 관련 상황";
+    const lst = $("#f4-lka-st");
+    if (lst && ST.learned.lka) lst.textContent = "학습 완료 · 차선이 잘 보이는 도로";
   }
+
+  /* three-scene.js is an ES module: it needs http(s) with a JavaScript MIME type (see serve.py).
+     Some servers send .js as text/plain (e.g. `python -m http.server` on Windows when the registry
+     says so) and the browser refuses the module. Then the same files are re-loaded as Blob URLs
+     with the right type and their imports rewired to those Blob URLs. */
+  let threeMod = null, threeWarned = false, d3Loading = false;
+  function loadThree() {
+    if (location.protocol === "file:") return Promise.reject(new Error("file:// cannot load ES modules"));
+    // check the MIME first so a refused module does not leave an error in the console
+    const jsType = fetch("js/three-scene.js", { method: "HEAD", cache: "no-store" })
+      .then(r => /javascript|ecmascript/i.test(r.headers.get("content-type") || ""))
+      .catch(() => true);
+    return (threeMod ||= jsType.then(ok => {
+      if (ok) return import("./three-scene.js");
+      console.info("서버가 .js를 JavaScript 형식으로 보내지 않아서 3D 모듈을 Blob으로 불러와요");
+      return importViaBlob();
+    }));
+  }
+  async function importViaBlob() {
+    const src = (u) => fetch(u, { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r.text(); });
+    const blob = (code) => URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+    const rewire = (code, from, to) => { if (!code.includes(from)) throw new Error(`import ${from} not found`); return code.split(from).join(JSON.stringify(to)); };
+    const three = blob(await src("vendor/three.module.min.js"));
+    const orbit = blob(rewire(await src("vendor/OrbitControls.js"), "'./three.module.min.js'", three));
+    let scene = await src("js/three-scene.js");
+    scene = rewire(rewire(scene, '"../vendor/three.module.min.js"', three), '"../vendor/OrbitControls.js"', orbit);
+    return import(blob(scene));
+  }
+  function threeFail(err) {
+    console.warn("3D 로드 실패 · 2D 그림으로 표시", err);
+    if (threeWarned || location.protocol === "file:") return;
+    threeWarned = true;
+    toast("3D 모델을 불러오지 못했어요 · python serve.py로 열어 주세요", 6000);
+  }
+
   function enterD3() {
-    const f = D.features[ST.feature];
+    const f = D.features[ST.feature], n = stageOf(ST.feature);
     $("#d3-name").textContent = f.name;
     $("#d3-sub").textContent = `내 차 기능 · ${f.cat} · ${f.loc}`;
-    $("#d3-prog").textContent = ST.learned[ST.feature] ? "3/3" : f.prog;
-    $("#d3-when").textContent = f.when;
+    $("#d3-prog").textContent = `${n}/3`;
+    $("#d3-when").innerHTML = f.when + (f.note ? `<div class="xs" style="margin-top:5px;line-height:1.45;color:#1A5FC4">${f.note}</div>` : "");
     $("#d3-caut").innerHTML = f.caut.map(c => `<li>${c}</li>`).join("");
+    // stage rows: done → check, current → 지금, later → 다음
+    const dot = (i, on) => `<span style="width:18px;height:18px;border-radius:50%;${on ? "background:#1F6FE0;color:#fff" : "border:1.5px solid #9AA0A8"};font-size:10px;display:flex;align-items:center;justify-content:center">${i}</span>`;
+    $("#d3-s1-ic").innerHTML = n >= 1 ? icon("check", 17, "#1FB83A") : dot(1, true);
+    const s1 = $("#d3-s1"); s1.textContent = n >= 1 ? "완료" : "지금"; s1.style.color = n >= 1 ? "#1A7F33" : "#1A5FC4";
+    const s2 = $("#d3-s2"); s2.textContent = n >= 3 ? "완료" : n >= 1 ? "지금" : "다음"; s2.className = "chip " + (n >= 3 ? "green" : n >= 1 ? "blue" : "gray");
+    $("#d3-s3-ic").innerHTML = n >= 3 ? icon("check", 17, "#1FB83A") : dot(3, false);
+    $("#d3-s3").textContent = n >= 3 ? "완료" : "다음";
+    $("#d3-s3-row").classList.toggle("mut", n < 3);
     if (window.D3S) { window.D3S.select(ST.feature); window.D3S.resume(); return; }
-    if (location.protocol === "file:") return; // ES modules need http(s); keep 2D fallback
-    import("./three-scene.js").then(m => {
+    if (d3Loading) return;
+    d3Loading = true;
+    loadThree().then(m => {
       window.D3S = m.init($("#d3-canvas"), $("#d3-markers"), (key) => { ST.feature = key; enterD3(); });
       $("#d3-fallback").style.display = "none";
       window.D3S.select(ST.feature);
-    }).catch(err => { console.warn("3D 로드 실패 · 2D 그림으로 표시", err); });
+      if (cur !== "D3") window.D3S.pause();
+    }).catch(threeFail).finally(() => { d3Loading = false; });
   }
-  const D4S = { step: 0 };
-  function enterD4() { D4S.step = 0; renderD4(); $("#d4-msg").className = "d4msg"; }
+
+  /* D4: 3D practice when available, 2D button pad as fallback */
+  const D4S = { step: 0, p3: null, loading: false };
+  const partsOf = () => D.features[ST.feature].parts || [];
+  function enterD4() {
+    D4S.step = 0; $("#d4-msg").className = "d4msg";
+    if (D4S.p3) { D4S.p3.resume(); D4S.p3.setFeature(ST.feature, partsOf()); }
+    renderD4();
+    if (D4S.p3 || D4S.loading) return;
+    D4S.loading = true;
+    loadThree().then(m => {
+      $("#d4-3d").hidden = false; $("#d4-pad").style.display = "none";
+      D4S.p3 = m.practice($("#d4-canvas"), $("#d4-tip"), (id) => { const i = partsOf().indexOf(id); if (i > -1) pressVB(i, null); });
+      D4S.p3.setFeature(ST.feature, partsOf());
+      sync3D();
+      if (cur !== "D4") D4S.p3.pause();
+    }).catch(threeFail).finally(() => { D4S.loading = false; });
+  }
+  function sync3D() {
+    if (!D4S.p3) return;
+    const f = D.features[ST.feature], ps = partsOf();
+    D4S.p3.mark(D4S.step < f.seq.length ? ps[f.seq[D4S.step]] : null, f.seq.slice(0, D4S.step).map(i => ps[i]));
+  }
   function renderD4() {
     const key = ST.feature, f = D.features[key], n = f.seq.length, st = D4S.step, done = st >= n;
+    $("#d4-pad").style.gridTemplateColumns = `repeat(${f.pad.length > 4 ? 3 : 2},124px)`;
     $("#d4-pad").innerHTML = f.pad.map((b, i) => {
       const doneB = f.seq.indexOf(i) > -1 && f.seq.indexOf(i) < st;
       const next = !done && f.seq[st] === i;
@@ -400,11 +489,14 @@
       $("#d4-done-sub").textContent = `${f.name} · ${n}단계 모두 완료`;
       const t = $("#d4-tgl"); t.classList.toggle("on", !!ST.rev[key]); t.setAttribute("aria-checked", !!ST.rev[key]);
     }
+    sync3D();
   }
+  /* i: pad index. el: the 2D button, or null when pressed in the 3D view */
   function pressVB(i, el) {
-    const f = D.features[ST.feature];
+    const f = D.features[ST.feature], id = partsOf()[i];
     if (D4S.step >= f.seq.length) return;
     if (f.seq[D4S.step] === i) {
+      if (!el && D4S.p3) D4S.p3.act(id);
       D4S.step++;
       const m = $("#d4-msg"); m.className = "d4msg ok"; m.textContent = `좋아요! ${f.stepText[D4S.step - 1]} 완료`;
       if (D4S.step >= f.seq.length) {
@@ -413,8 +505,9 @@
       }
       renderD4();
     } else {
-      el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
-      const m = $("#d4-msg"); m.className = "d4msg warn"; m.textContent = `지금은 ${f.pad[f.seq[D4S.step]][0]} 버튼을 눌러요`;
+      if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+      else if (D4S.p3) D4S.p3.wrong(id);
+      const m = $("#d4-msg"); m.className = "d4msg warn"; m.textContent = `지금은 '${f.pad[f.seq[D4S.step]][0]}' 차례예요 · 파란색으로 빛나는 곳을 눌러요`;
     }
   }
 
@@ -440,6 +533,7 @@
     if (!a) return;
     if (a.matches('a[href="#"]')) e.preventDefault();
     if (a.dataset.feature) ST.feature = a.dataset.feature;
+    if (a.dataset.goseg) ST.seg = +a.dataset.goseg; // B4 → A3 opens the recommended segment
     if (a.dataset.toast) toast(a.dataset.toast);
     if (a.dataset.launch || a.matches(".dock-hit.dc")) { e.preventDefault(); return cur === "L0" ? launch() : go("A1"); }
     if (a.matches(".dock-hit.grid")) { e.preventDefault(); return go("L0"); }
@@ -472,13 +566,13 @@
     // B3
     if (a.matches(".b3pt")) { ST.b3 = +a.dataset.seg; renderB3(); if (ST.b3 === 3) toast("이미 어려운 구간으로 표시한 곳이에요"); return; }
     if (a.matches(".pick")) { a.classList.toggle("on"); return; }
-    if (a.id === "b3-save") { toast(`'${D.b3names[ST.b3]}'을 어려운 구간으로 저장했어요`); return go("B4"); }
+    if (a.id === "b3-save") { ST.b4 = { seg: ST.b3, why: $$("#B3 .pick.on").map(p => p.textContent.trim()) }; toast(`'${D.b3names[ST.b3]}'을 어려운 구간으로 저장했어요`); return go("B4"); }
     // C2
     if (a.dataset.prog) { ST.prog = a.dataset.prog; renderC2(); return; }
     // D4
     if (a.matches(".vbtn")) return pressVB(+a.dataset.vb, a);
     if (a.id === "d4-tgl") { setRev(ST.feature, !ST.rev[ST.feature]); renderD4(); return; }
-    if (a.id === "d4-retry") { D4S.step = 0; $("#d4-msg").className = "d4msg"; return renderD4(); }
+    if (a.id === "d4-retry") { D4S.step = 0; $("#d4-msg").className = "d4msg"; if (D4S.p3) D4S.p3.setFeature(ST.feature, partsOf()); return renderD4(); }
     // D3 views
     if (a.closest("#d3-views") && a.dataset.view) { $$("#d3-views .tab").forEach(t => t.classList.toggle("on", t === a)); window.D3S && window.D3S.view(a.dataset.view); return; }
     // E2
@@ -607,6 +701,6 @@
     setTimeout(() => toast("` 키: 시연 패널 · F: 전체 화면", 3200), 600);
   }).catch(err => {
     console.error("화면 파일을 불러오지 못했어요", err);
-    toast("화면을 불러오지 못했어요 · python -m http.server로 열어 주세요", 60000);
+    toast("화면을 불러오지 못했어요 · python serve.py로 열어 주세요", 60000);
   });
 })();

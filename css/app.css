@@ -70,6 +70,12 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .vbtn.done .ok{display:flex}
 .vbtn.shake{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.d4-3d{position:relative;margin-top:14px;height:236px;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#3A3F47,#1E2126)}
+.d4-3d[hidden]{display:none}
+.d4-canvas{position:absolute;inset:0;cursor:pointer}
+.d4-tip{position:absolute;transform:translate(-50%,calc(-100% - 14px));background:#1F6FE0;color:#fff;border-radius:9px;padding:5px 9px;font-size:12px;font-weight:600;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(31,111,224,.4);display:none}
+.d4-tip.on{display:block}
+.d4-badge{position:absolute;left:10px;top:10px;background:rgba(255,255,255,.14);color:#E6E9EE;border-radius:8px;padding:4px 8px;font-size:11px;pointer-events:none}
 .d4msg{margin-top:14px;border-radius:12px;padding:11px 12px;font-size:13px;line-height:1.5;display:none}
 .d4msg.ok{display:block;background:#E6F6EA;color:#1A7F33}
 .d4msg.warn{display:block;background:#FFF4E5;color:#8A5300}

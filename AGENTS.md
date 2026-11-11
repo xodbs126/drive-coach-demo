@@ -42,9 +42,11 @@
 빌드 단계가 없는 정적 사이트예요.
 
 ```bash
-python -m http.server 8000   # http://localhost:8000
+python serve.py             # http://localhost:8000
 ```
 
+- `serve.py`를 권장해요. `.js` MIME 형식을 고정하고, 캐시를 끄고, 이미 쓰이는 포트면 오류를 내요(표준 라이브러리만 써요). Windows에서 레지스트리가 `.js`를 `text/plain`으로 잡고 있으면 `python -m http.server`가 3D 모듈을 일반 텍스트로 보내요. 이때 `app.js`가 같은 파일을 Blob으로 다시 불러와서 3D는 뜨지만, 수정한 파일이 캐시에 남을 수 있어요.
+- 같은 포트에 서버를 두 개 켜지 않아요. Windows에서는 `python -m http.server`와 다른 서버가 8000번을 함께 잡아도 오류가 나지 않고, 브라우저가 어느 쪽에 붙을지 알 수 없어요.
 - `file://`로 열면 화면 파일(fetch), 3D(ES 모듈), 웹폰트가 막혀서 화면이 비어 보여요. 반드시 로컬 서버로 확인해요.
 - 시연 패널은 `` ` `` 키로 열어요(화면 바로가기, 재생 속도, 음성, 크루즈 동의).
 - 단축키: `Space` 모의 주행 일시정지, `R` 현재 화면 다시 시작, `F` 전체 화면.
@@ -61,7 +63,8 @@ css/app.css         스테이지 스케일, 화면 전환, 인터랙션, 스플�
 js/icons.js         window.ICONS: 스트로크 SVG 아이콘 문자열
 js/data.js          window.D: 시나리오 데이터 (문구 수정은 대부분 여기)
 js/app.js           라우터, 상태(ST), 화면별 렌더·이벤트, TTS 큐, 모의 주행, 시연 패널
-js/three-scene.js   Three.js 3D 운전석 (ES 모듈, D3 화면에서 지연 로드)
+js/three-scene.js   Three.js 3D 운전석 (ES 모듈, D3 실내·D4 가상 실습에서 지연 로드)
+serve.py            로컬 미리보기 서버 (.js MIME 고정)
 vendor/             three.module.min.js, OrbitControls.js (r170, 로컬 번들 · 수정 금지)
 assets/             차량·독·상태바 PNG (팀 디자인 시안에서 잘라 쓴 것)
 fonts/              Pretendard Variable
