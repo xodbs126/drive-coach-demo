@@ -81,6 +81,12 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .d4msg.warn{display:block;background:#FFF4E5;color:#8A5300}
 
 /* ---------- B1~B4 · E2 · E3: 기록이 없는 프로필 ---------- */
+/* ---------- cluster: 3D car (js/car3d.js) · limit sign ---------- */
+.cl-car3d{position:absolute;left:10px;top:176px;width:340px;height:270px;border-radius:12px}
+#stage.car3d-on .cl-cars{display:none}
+.cl-limit{z-index:1}
+.cl-limit.over{background:#E5191C;color:#fff}
+.drvlock{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(246,246,247,.97);border-radius:16px}
 .norec{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:#F6F6F7;border-radius:16px}
 .norec-in{width:440px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
 .norec-ic{width:64px;height:64px;border-radius:50%;background:#E8F0FD;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
@@ -100,6 +106,9 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 #panel .scrs{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
 #panel button{font:inherit;font-size:12px;border:1px solid #DADADF;background:#fff;border-radius:8px;padding:6px 7px;cursor:pointer;text-align:left;color:#111418}
 #panel button.on{background:#0B2A5B;color:#fff;border-color:#0B2A5B}
+#panel .vsrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#panel .vsnum{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+#panel .pedal{flex:1;height:40px;text-align:center;font-weight:700;touch-action:none;user-select:none}
 #panel .rowp{display:flex;gap:4px;flex-wrap:wrap}
 #panel label{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 0;cursor:pointer}
 #panel .selp{justify-content:space-between;cursor:default}
