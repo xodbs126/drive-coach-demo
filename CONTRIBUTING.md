@@ -8,7 +8,7 @@
 git clone https://github.com/xodbs126/drive-coach-demo.git
 cd drive-coach-demo
 git config core.autocrlf false     # 줄바꿈은 .gitattributes가 LF로 맞춰요
-python -m http.server 8000         # http://localhost:8000
+python serve.py                    # http://localhost:8000
 ```
 
 - 에디터는 `.editorconfig`를 지원하게 해 주세요(VS Code는 "EditorConfig for VS Code" 확장).

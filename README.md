@@ -113,11 +113,13 @@ flowchart LR
 
 ```
 cd drive-coach-mockup
-python -m http.server 8000     # 또는 npx serve
+python serve.py                # 또는 npx serve
 # 브라우저에서 http://localhost:8000
 ```
 
 `index.html`을 더블클릭해서(`file://`) 열면 화면 파일(`screens/`)을 불러오지 못해 빈 화면이 나와요. 꼭 위처럼 로컬 서버로 여세요.
+
+`python -m http.server`로 열어도 3D는 떠요. 다만 PC 설정에 따라 `.js`를 일반 텍스트로 보내거나 수정한 파일이 캐시에 남을 수 있어서 `serve.py`를 권장해요. 같은 포트에 서버를 두 개 켜 두지 마세요.
 
 ## 녹화 팁
 
@@ -156,7 +158,7 @@ screens/            화면 하나에 파일 하나 (L0 차량 홈 + 앱 화면 1
 css/                화면 스타일 · 인터랙션 스타일
 js/data.js          시나리오 데이터 (구간, 음성 대본, 미션, 차량 기능)
 js/app.js           라우터 · 리허설 · 모의 주행 · 음성 · 실습 로직
-js/three-scene.js   3D 실내 (Three.js, 대표 차종 단순 모델)
+js/three-scene.js   3D 실내·가상 실습 (Three.js, 대표 차종 단순 모델 · 운전대 버튼 배치는 그랜저 GN7 설명서 기준)
 vendor/             Three.js r170 (MIT)
 fonts/              Pretendard (SIL OFL 1.1)
 assets/             차량·독 이미지 (팀 디자인 시안에서 발췌)
