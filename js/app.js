@@ -57,13 +57,128 @@
   const CLOCK = { off: 0 };
   const now = () => new Date(Date.now() + CLOCK.off);
   const p2 = (n) => String(n).padStart(2, "0");
+  const hm24 = (d) => `${p2(d.getHours())}:${p2(d.getMinutes())}`;
   const hm12 = (d) => `${d.getHours() % 12 || 12}:${p2(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
   function tickClock() {
     const d = now();
     $$(".sb-t").forEach(el => { if (!(SIM.t0 && el.closest("#A5"))) el.textContent = hm12(d); });
     $$(".l0-time").forEach(el => { el.textContent = `${d.getHours() % 12 || 12}:${p2(d.getMinutes())}`; });
     const eta = new Date(d.getTime() + 26 * 60000); // 집 → 회사 약 26분
-    $$("[data-eta]").forEach(el => { el.textContent = `${p2(eta.getHours())}:${p2(eta.getMinutes())}`; });
+    $$("[data-eta]").forEach(el => { el.textContent = hm24(eta); });
+  }
+
+  /* ------------------------------------------------------------ vehicle state (simulation)
+     One source for the left cluster on every screen. Two inputs drive it:
+     - A5 모의 주행 (while SIM.run, updateA5 writes VS)
+     - 시연 패널의 기어 · ACCEL · BRAKE (or ↑ ↓ keys): simple physics in vsStep()
+     While the car moves, screens in LOCK are covered (기획 원칙 3: 정차 중에만). */
+  const VS = { gear: "P", speed: 0, odo: 5035, limit: 50, pedal: null, moved: false, raf: 0, last: 0, warned: false,
+    turn: null, doors: { fl: false, fr: false, rl: false, rr: false, trunk: false } };
+  const ROAD_LIMIT = 50; // 시연 패널로 움직일 때의 도로 제한속도 (집 근처 도심 · 시뮬레이션)
+  const doorOpen = () => Object.values(VS.doors).some(Boolean);
+  const LOCK = { A3: "첫길 리허설", A4: "구간 상세 학습", B3: "지도 분석", D3: "실내 그림 조작", D4: "가상 실습", F2: "프로필 전환" };
+  const moving = () => VS.speed >= 0.5;
+  const fmtOdo = () => (VS.moved ? VS.odo.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : VS.odo.toLocaleString("en-US")) + "km";
+  let wasMoving = false;
+  function syncCluster() {
+    const sp = String(Math.round(VS.speed)), odo = fmtOdo();
+    // road limit sign: shown while driving; red when over it (지능형 속도 제한 보조처럼)
+    const showLim = moving() || simDriving(), over = Math.round(VS.speed) > VS.limit;
+    $$(".cl").forEach(c => {
+      $(".cl-speed", c).textContent = sp; $(".cl-gear", c).textContent = VS.gear; $(".cl-odo", c).textContent = odo;
+      let lim = $(".cl-limit", c);
+      if (!lim) { lim = document.createElement("div"); lim.className = "cl-limit"; c.appendChild(lim); }
+      lim.textContent = VS.limit; lim.style.display = showLim ? "" : "none"; lim.classList.toggle("over", over);
+    });
+    $$("[data-vs=gear]").forEach(e => { e.textContent = VS.gear; });
+    $$("[data-vs=state]").forEach(e => { e.textContent = moving() ? "주행 중" : "정차 중"; });
+    if (moving() !== wasMoving) { wasMoving = moving(); syncLock(); }
+    if (!P.hidden) {
+      $("#p-vs-speed").textContent = sp;
+      $$("[data-p-gear]", P).forEach(b => b.classList.toggle("on", b.dataset.pGear === VS.gear));
+      $$("[data-p-turn]", P).forEach(b => b.classList.toggle("on", b.dataset.pTurn === VS.turn));
+      $$("[data-p-door]", P).forEach(b => b.classList.toggle("on", VS.doors[b.dataset.pDoor]));
+    }
+  }
+  /* cover the current screen while moving · removed when the car stops */
+  function syncLock() {
+    const id = cur, sc = id && $("#" + id);
+    $$(".drvlock").forEach(o => { if (!sc || !sc.contains(o)) o.style.display = "none"; });
+    if (!sc || !LOCK[id]) return;
+    const bd = $(".bd", sc);
+    let ov = $(".drvlock", bd);
+    if (!moving()) { if (ov) ov.style.display = "none"; return; }
+    if (!ov) { ov = document.createElement("div"); ov.className = "drvlock"; bd.appendChild(ov); }
+    ov.style.display = "";
+    ov.innerHTML = `<div class="norec-in"><span class="norec-ic">${icon("lock", 30, "#1F6FE0")}</span>
+<div class="h2">주행 중에는 쓸 수 없어요</div>
+<div class="sm" style="line-height:1.55">${LOCK[id]}은 정차 중에만 할 수 있어요.<br/>차가 멈추면 이 화면이 다시 열려요.</div></div>`;
+  }
+  const simDriving = () => SIM.run && !SIM.finished;
+  function setGear(g) {
+    if (simDriving()) return toast("모의 주행 중에는 A5가 차를 움직여요");
+    if (g === VS.gear) return;
+    if (moving()) return toast("차를 멈춘 뒤 기어를 바꿔요");
+    VS.gear = g; VS.warned = false; syncCluster();
+  }
+  function setPedal(p) {
+    if (simDriving()) { VS.pedal = null; return; }
+    VS.pedal = p;
+    if (p === "accel" && (VS.gear === "P" || VS.gear === "N") && !VS.warned) { VS.warned = true; toast("기어를 D로 바꾸고 ACCEL을 누르면 출발해요"); }
+    if (p === "accel" && doorOpen()) { VS.pedal = null; return toast("문이 열려 있어요 · 닫은 뒤 출발해요"); }
+    vsKick();
+  }
+  /* 3D car in the cluster (js/car3d.js). One WebGL canvas moves into the cluster of the shown screen.
+     It is an ES module: it needs http(s) and a JavaScript MIME type. Some servers send .js as
+     text/plain (python -m http.server on some Windows PCs); then the files are re-loaded as Blob URLs.
+     If it still fails, the cluster keeps the flat picture (assets/cluster-cars.png). */
+  let CAR = null;
+  const carState = () => ({
+    gear: VS.gear, speed: VS.speed, turn: VS.turn, doors: VS.doors,
+    braking: simDriving() ? SIM.braking : VS.pedal === "brake" || ((VS.gear === "D" || VS.gear === "R") && !moving()),
+  });
+  function loadCar() {
+    if (location.protocol === "file:") return;
+    fetch("js/car3d.js", { method: "HEAD", cache: "no-store" })
+      .then(r => /javascript|ecmascript/i.test(r.headers.get("content-type") || ""), () => true)
+      .then(ok => (ok ? import("./car3d.js") : importCarViaBlob()))
+      .then(m => {
+        CAR = m.initCar(carState);
+        $("#stage").classList.add("car3d-on");
+        if (cur) CAR.mount($(`#${cur} .cl`));
+      })
+      .catch(err => console.warn("3D 차량을 불러오지 못해서 그림으로 보여요", err));
+  }
+  async function importCarViaBlob() {
+    const src = (u) => fetch(u, { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r.text(); });
+    const blob = (code) => URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+    const three = blob(await src("vendor/three.module.min.js")), code = await src("js/car3d.js");
+    const from = '"../vendor/three.module.min.js"';
+    if (!code.includes(from)) throw new Error("car3d.js: three import not found");
+    return import(blob(code.split(from).join(JSON.stringify(three))));
+  }
+  function setTurn(t) {
+    if (simDriving()) return toast("모의 주행 중에는 A5가 방향지시등을 켜요");
+    VS.turn = VS.turn === t ? null : t; syncCluster();
+  }
+  function toggleDoor(k) {
+    if (simDriving() || moving()) return toast("주행 중에는 문을 열 수 없어요");
+    VS.doors[k] = !VS.doors[k]; syncCluster();
+  }
+  function vsKick() { if (!VS.raf) { VS.last = 0; VS.raf = requestAnimationFrame(vsStep); } }
+  function vsStep(t) {
+    VS.raf = 0;
+    if (simDriving()) return;                         // A5 writes VS itself
+    const dt = VS.last ? Math.min(0.05, (t - VS.last) / 1000) : 0; VS.last = t;
+    // rates of a mid-size sedan: 0→100km/h in about 15s with a steady pedal, 12km/h per second braking,
+    // 1.5km/h per second when coasting (regenerative braking)
+    const max = VS.gear === "R" ? 15 : 180, drive = VS.gear === "D" || VS.gear === "R";
+    if (VS.pedal === "accel" && drive) VS.speed = Math.min(max, VS.speed + (9 - VS.speed * 0.045) * dt);
+    else if (VS.pedal === "brake") VS.speed = Math.max(0, VS.speed - 12 * dt);
+    else VS.speed = Math.max(0, VS.speed - 1.5 * dt);
+    if (VS.speed > 0) { VS.odo += VS.speed * dt / 3600; VS.moved = true; } else if (VS.speed < 0.5) VS.speed = 0;
+    syncCluster();
+    if (VS.pedal || VS.speed > 0) VS.raf = requestAnimationFrame(vsStep);
   }
 
   /* ------------------------------------------------------------ stage scale */
@@ -141,6 +256,8 @@
     $$(".scr.on").forEach(e => e.classList.remove("on"));
     $("#" + id).classList.add("on");
     cur = id; enter(id);
+    syncCluster(); syncLock();
+    if (CAR) CAR.mount($(".cl", $("#" + id)));
     syncPanel();
   }
   function go(id) { if (location.hash === "#" + id) { cur = null; show(); } else location.hash = id; }
@@ -253,12 +370,28 @@
     }
   }
   const limitAt = (km) => { let l = 50; for (const [k, v] of D.limits) if (km >= k) l = v; return l; };
+  /* 방향지시등: 회전 250m 전부터 회전 직후까지 켜요 (시뮬레이션) */
+  const TURN = { tr: "R", tl: "L", ut: "L", rb: "R" };
+  const turnAt = (km) => { const s = D.segs.find(x => TURN[x.ic] && km > x.km - 0.25 && km < x.km + 0.03); return s ? TURN[s.ic] : null; };
   const NAVTXT = { 1: "단지 앞 큰길로 우회전", 2: "어린이 보호구역 진입", 3: "시청 사거리에서 좌회전", 4: "회전교차로 첫 번째 출구", 5: "도시고속도로 진입", 6: "회사 앞에서 유턴", 7: "좌회전 후 목적지" };
-  const SIM = { run: false, paused: false, km: 0, spd: 0, raf: 0, last: 0, fired: new Set(), cam: { x: 120, y: 520 }, head: 0, finished: false, idleT: 0 };
+  const SIM = { run: false, paused: false, km: 0, spd: 0, raf: 0, last: 0, fired: new Set(), cam: { x: 120, y: 520 }, head: 0, finished: false, idleT: 0, braking: false };
+  const SIM_ACC = 5.5, SIM_DEC = 8, K_SLOW = 4, K_FAST = 24;
+  const BRAKE_K = 2 * SIM_DEC * 0.8 * 3600 / K_SLOW; // (km/h)² per km of braking room, with a margin
+  /* speed allowed now: the planned speed here, or lower if a slower point ahead needs braking already */
+  function wantSpeed(km) {
+    let w = interp(D.speeds, km);
+    for (let i = 1; i <= 16; i++) {
+      const x = 0.5 * i / 16, vt = interp(D.speeds, Math.min(12.4, km + x));
+      w = Math.min(w, Math.sqrt(vt * vt + x * BRAKE_K));
+    }
+    return w;
+  }
 
   function enterA5() {
     stopSim(); hush();
-    Object.assign(SIM, { run: true, paused: false, km: 0, spd: 0, last: 0, fired: new Set(), cam: { x: 120, y: 500 }, head: 0, finished: false, t0: now().getTime(), mins: 0 });
+    Object.assign(SIM, { run: true, paused: false, km: 0, spd: 0, last: 0, fired: new Set(), cam: { x: 120, y: 500 }, head: 0, finished: false, t0: now().getTime(), mins: 0, odo0: VS.odo });
+    VS.pedal = null; VS.moved = true; Object.keys(VS.doors).forEach(k => { VS.doors[k] = false; });
+    $("#a5-eta").textContent = hm24(new Date(SIM.t0 + 26 * 60000)); // 도착 예정: 출발 + 26분
     coachIdle(); $("#a5-navsub").classList.remove("on"); $("#a5-navspk").classList.remove("on");
     updateA5(0);
     setTimeout(() => { if (SIM.run && cur === "A5") { SIM.raf = requestAnimationFrame(tick); } }, 700);
@@ -266,6 +399,9 @@
   function stopSim() {
     SIM.run = false; cancelAnimationFrame(SIM.raf);
     if (SIM.t0) { CLOCK.off += SIM.mins * 60000; SIM.t0 = 0; SIM.mins = 0; tickClock(); } // keep the minutes driven
+    if (SIM.finished) { VS.speed = 0; VS.gear = "P"; } // arrived and parked
+    VS.limit = ROAD_LIMIT; VS.turn = null;
+    syncCluster(); vsKick(); // left A5 while moving: the car keeps rolling and slows down
   }
   function tick(t) {
     if (!SIM.run) return;
@@ -274,9 +410,12 @@
     if (!SIM.paused && !SIM.finished) {
       const talking = TTS.busy || TTS.q.length > 0;
       const dt = talking ? rdt : rdt * ST.speed;      // playback speed only applies between voice lines
-      const K = talking ? 4 : 28;                     // time warp: slow down while voice is playing
-      const tgt = interp(D.speeds, SIM.km);
-      SIM.spd += (tgt - SIM.spd) * Math.min(1, dt * 2.4);
+      // The needle moves at real-car rates (SIM_ACC / SIM_DEC km/h per second) and brakes early enough
+      // for the next slower point. Distance is fast-forwarded (K) only while the speed is steady.
+      const tgt = wantSpeed(SIM.km), diff = tgt - SIM.spd;
+      SIM.spd += Math.max(-SIM_DEC * dt, Math.min(SIM_ACC * dt, diff));
+      SIM.braking = diff < -0.5;
+      const K = talking || Math.abs(tgt - SIM.spd) > 1.5 ? K_SLOW : K_FAST;
       SIM.km = Math.min(12.4, SIM.km + Math.max(SIM.spd, 6) / 3600 * dt * K);
       fireScript();
       if (SIM.km >= 12.4) finish();
@@ -344,10 +483,9 @@
     $("#a5-done").setAttribute("points", pts.join(" "));
     // cluster + status
     const sc = $("#A5");
-    $(".cl-speed", sc).textContent = Math.round(SIM.finished ? 0 : SIM.spd);
-    $(".cl-gear", sc).textContent = SIM.finished ? "P" : "D";
-    $(".cl-limit", sc).textContent = limitAt(SIM.km);
-    $(".cl-odo", sc).textContent = (5035 + SIM.km).toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/, ",") + "km";
+    VS.speed = SIM.finished ? 0 : SIM.spd; VS.gear = SIM.finished ? "P" : "D"; VS.odo = SIM.odo0 + SIM.km;
+    VS.limit = limitAt(SIM.km); VS.turn = SIM.finished ? null : turnAt(SIM.km);
+    syncCluster();
     SIM.mins = Math.round(26 * SIM.km / 12.4);
     $(".sb-t", sc).textContent = hm12(new Date(SIM.t0 + SIM.mins * 60000));
     $("#a5-left").textContent = Math.max(0, 12.4 - SIM.km).toFixed(1);
@@ -642,6 +780,7 @@
     }
     if (a.id === "f2-go") { const was = ST.profile; setProfile(F2.pick); if (ST.profile !== was) toast(`${ST.profile} 님 프로필로 바꿨어요`); return go("A1"); }
     // F4
+    if ((a.matches(".tgl[data-key]") || a.closest("#f4-freq")) && moving()) return toast("주행 중에는 바꿀 수 없어요 · 정차한 뒤 바꿔요");
     if (a.matches(".tgl[data-key]")) {
       const k = a.dataset.key;
       if (k === "rec") { ST.rec = !ST.rec; toast(ST.rec ? "주행 기록 수집을 다시 켰어요" : "새 주행 기록을 모으지 않아요 · 코칭은 따로 동작해요"); }
@@ -678,6 +817,12 @@
     const scr = $$(".scr").map(s => `<button data-p-go="${s.id}">${s.id} ${s.dataset.name}</button>`).join("");
     P.innerHTML = `<h3>시연 패널</h3><div class="muted">녹화 화면에는 나오지 않게 <kbd>\`</kbd> 키로 열고 닫아요</div>
 <div class="grp"><b>화면 바로가기</b><div class="scrs">${scr}</div></div>
+<div class="grp"><b>차량 상태 · 시뮬레이션</b>
+<div class="vsrow"><span><span id="p-vs-speed" class="vsnum">0</span> km/h</span><span class="rowp">${["P", "R", "N", "D"].map(g => `<button data-p-gear="${g}">${g}</button>`).join("")}</span></div>
+<div class="rowp" style="margin-top:6px"><button class="pedal" data-p-pedal="accel">ACCEL</button><button class="pedal" data-p-pedal="brake">BRAKE</button></div>
+<div class="rowp" style="margin-top:6px"><button data-p-turn="L">◀ 왼쪽</button><button data-p-turn="H">비상등</button><button data-p-turn="R">오른쪽 ▶</button></div>
+<div class="rowp" style="margin-top:6px">${[["fl", "운전석 문"], ["fr", "동승석 문"], ["rl", "뒤 왼쪽"], ["rr", "뒤 오른쪽"], ["trunk", "트렁크"]].map(([k, n]) => `<button data-p-door="${k}">${n}</button>`).join("")}</div>
+<div class="muted" style="margin:6px 0 0">누르고 있는 동안 가속·감속해요(<kbd>↑</kbd> <kbd>↓</kbd>). 달리는 동안 계기판이 모든 화면에서 바뀌고, 정차 중에만 되는 화면은 잠겨요. 모의 주행(A5) 중에는 A5가 속도를 정해요.</div></div>
 <div class="grp"><b>모의 주행 재생 속도</b><div class="rowp">${[0.5, 1, 1.5, 2].map(v => `<button data-p-speed="${v}">${v}x</button>`).join("")}</div></div>
 <div class="grp"><b>시나리오 설정</b>
 <label><input type="checkbox" id="p-voice"> 음성(TTS) 재생</label>
@@ -688,7 +833,7 @@
 <label class="selp">코칭 <select id="p-coach-voice"></select></label>
 <button id="p-voice-test" style="width:100%;margin-top:4px">두 목소리 들어보기</button>
 <div class="muted" style="margin:6px 0 0">가장 자연스러운 목소리는 Edge의 "SunHi (Natural)"예요. Chrome은 "Google 한국의"를 써요.</div></div>
-<div class="grp"><b>단축키</b><div class="muted" style="margin:0;line-height:1.7"><kbd>Space</kbd> 모의 주행 일시정지 · <kbd>R</kbd> 현재 화면 다시 시작<br><kbd>F</kbd> 전체 화면 · <kbd>\`</kbd> 패널 열기/닫기</div></div>
+<div class="grp"><b>단축키</b><div class="muted" style="margin:0;line-height:1.7"><kbd>Space</kbd> 모의 주행 일시정지 · <kbd>R</kbd> 현재 화면 다시 시작<br><kbd>↑</kbd> ACCEL · <kbd>↓</kbd> BRAKE (누르고 있기)<br><kbd>F</kbd> 전체 화면 · <kbd>\`</kbd> 패널 열기/닫기</div></div>
 <div class="grp"><button id="p-reset" style="width:100%">처음 상태로 초기화</button></div>`;
   }
   const VOICE_SAMPLE = { nav: "300미터 앞에서 우회전입니다.", coach: "오른쪽 끝 차로를 미리 유지해요." };
@@ -712,11 +857,25 @@
     $$("[data-p-go]", P).forEach(b => b.classList.toggle("on", b.dataset.pGo === cur));
     $$("[data-p-speed]", P).forEach(b => b.classList.toggle("on", +b.dataset.pSpeed === ST.speed));
     $("#p-voice").checked = ST.voice; $("#p-coach").checked = ST.coach; $("#p-scc").checked = !!(ST.learned.scc && ST.rev.scc);
+    syncCluster();
   }
+  /* ACCEL · BRAKE work while held down */
+  P.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest("[data-p-pedal]"); if (!b) return;
+    try { b.setPointerCapture(e.pointerId); } catch (_) { /* pointer already gone */ }
+    b.classList.add("on"); setPedal(b.dataset.pPedal);
+  });
+  ["pointerup", "pointercancel"].forEach(ev => P.addEventListener(ev, (e) => {
+    const b = e.target.closest("[data-p-pedal]"); if (!b) return;
+    b.classList.remove("on"); if (VS.pedal === b.dataset.pPedal) setPedal(null);
+  }));
   P.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.pGo) go(b.dataset.pGo);
     if (b.dataset.pSpeed) ST.speed = +b.dataset.pSpeed;
+    if (b.dataset.pGear) setGear(b.dataset.pGear);
+    if (b.dataset.pTurn) setTurn(b.dataset.pTurn);
+    if (b.dataset.pDoor) toggleDoor(b.dataset.pDoor);
     if (b.id === "p-reset") { location.hash = "A1"; location.reload(); }
     if (b.id === "p-voice-test") { hush(); speak({ text: VOICE_SAMPLE.nav, kind: "nav" }); speak({ text: VOICE_SAMPLE.coach, kind: "ui" }); }
     syncPanel();
@@ -733,12 +892,17 @@
     // keys and spots in the 2D drawings are SVG groups: Enter/Space presses them like buttons
     const k = e.target.closest(".key.act,.spot");
     if (k && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); k.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.target.matches("select")) { e.preventDefault(); if (!e.repeat) setPedal(e.key === "ArrowUp" ? "accel" : "brake"); return; }
     if (e.key === "`") { P.hidden = !P.hidden; syncPanel(); }
     else if (e.key === "Escape") P.hidden = true;
     else if (e.key === " " && cur === "A5") { e.preventDefault(); SIM.paused = !SIM.paused; if (hasTTS) SIM.paused ? speechSynthesis.pause() : speechSynthesis.resume(); toast(SIM.paused ? "일시정지" : "재생", 900); }
     else if (e.key === "f" || e.key === "F") { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
     else if (e.key === "r" || e.key === "R") { const c = cur; leave(c); cur = null; show(); }
   });
+  document.addEventListener("keyup", (e) => {
+    if ((e.key === "ArrowUp" && VS.pedal === "accel") || (e.key === "ArrowDown" && VS.pedal === "brake")) setPedal(null);
+  });
+  addEventListener("blur", () => { if (VS.pedal) { setPedal(null); $$("[data-p-pedal]", P).forEach(b => b.classList.remove("on")); } });
 
   /* ------------------------------------------------------------ boot */
   // Each screen lives in screens/<ID>.html. Order matters: it is the DOM order
@@ -757,6 +921,7 @@
     applyProfile();
     tickClock(); setInterval(tickClock, 5000);
     show();
+    loadCar();
     setTimeout(() => toast("` 키: 시연 패널 · F: 전체 화면", 3200), 600);
   }).catch(err => {
     console.error("화면 파일을 불러오지 못했어요", err);
