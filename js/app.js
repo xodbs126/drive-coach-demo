@@ -7,11 +7,25 @@
 
   /* ------------------------------------------------------------ state */
   const ST = {
-    seg: 3, checked: new Set([1, 2]), feature: "scc", prog: "commute", b3: 4,
-    learned: { wiper: true }, rev: { wiper: true, scc: false, lka: false },
-    rec: true, coach: true, freq: 2, voice: true, speed: 1, profile: "지민",
+    feature: "scc", b3: 4, voice: true, speed: 1, profile: "지민", d3view: "all",
     navVoice: "", coachVoice: "", // voiceURI picked in the demo panel ("" = automatic)
   };
+
+  /* ------------------------------------------------------------ driver profiles
+     Each driver keeps their own progress and settings (PER). Switching stores the current
+     driver's values and loads the other driver's. D.profiles holds the starting values. */
+  const PER = ["learned", "rev", "checked", "prog", "seg", "b4", "rec", "coach", "freq", "stage", "drove"];
+  const PSTORE = {};
+  const prof = () => D.profiles[ST.profile];
+  function freshProfile(name) {
+    const p = D.profiles[name];
+    return {
+      learned: { ...p.learned }, rev: { ...p.rev }, checked: new Set(p.checked), prog: p.prog, seg: p.seg, b4: null,
+      rec: true, coach: true, freq: 2, drove: false,
+      stage: p.stage ? { ...p.stage } : Object.fromEntries(Object.entries(D.features).map(([k, f]) => [k, parseInt(f.prog, 10) || 0])),
+    };
+  }
+  Object.assign(ST, freshProfile(ST.profile));
 
   /* ------------------------------------------------------------ helpers */
   function icon(name, size = 22, color = "currentColor") {
@@ -36,6 +50,21 @@
     return table[table.length - 1][1];
   }
   const invTable = (t) => t.map(([a, b]) => [b, a]);
+
+  /* ------------------------------------------------------------ clock
+     Every status bar shows the real time. Minutes driven in the A5 simulation are added
+     (CLOCK.off) so the clock never goes back after arriving. */
+  const CLOCK = { off: 0 };
+  const now = () => new Date(Date.now() + CLOCK.off);
+  const p2 = (n) => String(n).padStart(2, "0");
+  const hm12 = (d) => `${d.getHours() % 12 || 12}:${p2(d.getMinutes())} ${d.getHours() < 12 ? "AM" : "PM"}`;
+  function tickClock() {
+    const d = now();
+    $$(".sb-t").forEach(el => { if (!(SIM.t0 && el.closest("#A5"))) el.textContent = hm12(d); });
+    $$(".l0-time").forEach(el => { el.textContent = `${d.getHours() % 12 || 12}:${p2(d.getMinutes())}`; });
+    const eta = new Date(d.getTime() + 26 * 60000); // 집 → 회사 약 26분
+    $$("[data-eta]").forEach(el => { el.textContent = `${p2(eta.getHours())}:${p2(eta.getMinutes())}`; });
+  }
 
   /* ------------------------------------------------------------ stage scale */
   function fit() {
@@ -118,26 +147,45 @@
   addEventListener("hashchange", show);
 
   function enter(id) {
-    ({ A3: renderA3, A4: enterA4, A5: enterA5, B3: renderB3, B4: renderB4, C2: renderC2, D2: syncLearn, D3: enterD3, D4: enterD4, F4: syncSettings }[id] || (() => {}))();
+    if (/^(B[1-4]|E[23])$/.test(id)) noRecords(id);
+    ({ A1: renderA1, A3: renderA3, A4: enterA4, A5: enterA5, B3: renderB3, B4: renderB4, C2: renderC2, D2: enterD2, D3: enterD3, D4: enterD4, F2: syncF2, F4: syncSettings }[id] || (() => {}))();
   }
   function leave(id) {
     hush();
     if (id === "A5") stopSim();
     if (id === "A4") cancelAnimationFrame(A4.raf);
-    if (id === "D3" && window.D3S) window.D3S.pause();
-    if (id === "D4" && D4S.p3) D4S.p3.pause();
+  }
+
+  /* ------------------------------------------------------------ A1 home */
+  function renderA1() {
+    $("#a1-segs").textContent = `주요 구간 7곳 · ${ST.checked.size}곳 확인` + (prof().records ? " · 어려운 구간 1곳" : "");
+  }
+  /* B1~B4, E2, E3 for a driver without records: cover the screen with an empty state */
+  function noRecords(id) {
+    const bd = $(`#${id} .bd`);
+    let ov = $(".norec", bd);
+    if (prof().records) { if (ov) ov.style.display = "none"; return; }
+    if (!ov) { ov = document.createElement("div"); ov.className = "norec"; bd.appendChild(ov); }
+    const after = ST.drove && id === "B1";
+    ov.style.display = "";
+    ov.innerHTML = `<div class="norec-in"><span class="norec-ic">${icon(after ? "check" : "route", 30, "#1F6FE0")}</span>
+<div class="h2">${after ? "주행을 마쳤어요" : "아직 주행 기록이 없어요"}</div>
+<div class="sm" style="line-height:1.55">${after ? "집 → 회사 · 12.4km · 시뮬레이션<br/>점수 리포트 예시는 지민 프로필에만 있어요."
+    : `${ST.profile} 님이 주행을 마치면 점수와 리포트가 여기에 쌓여요.<br/>기록은 이 차량 안에만 저장돼요.`}</div>
+<div class="row" style="gap:8px;margin-top:12px"><a href="#A3" class="btn pri" style="width:170px">첫길 리허설 하기</a><a href="#F2" class="btn sec" style="width:150px">프로필 바꾸기</a></div></div>`;
   }
 
   /* ------------------------------------------------------------ A3 rehearsal */
+  const hardOf = (s) => !!s.hard && prof().records; // '어려운 구간' is the driver's own mark
   function renderA3() {
     const rows = D.segs.map(s => {
-      const on = s.n === ST.seg, chk = ST.checked.has(s.n);
+      const on = s.n === ST.seg, chk = ST.checked.has(s.n), hard = hardOf(s);
       const bar = chk ? "#1FB83A" : on ? "#1F6FE0" : "#E0E0E5";
-      const tail = s.hard ? '<span class="chip red">어려운 구간</span>' : chk ? icon("check", 18, "#1FB83A") : "";
+      const tail = hard ? '<span class="chip red">어려운 구간</span>' : chk ? icon("check", 18, "#1FB83A") : "";
       return `<a href="#" class="tl-row${on ? " on" : ""}" data-seg="${s.n}"><span style="width:3px;height:34px;border-radius:2px;background:${bar}"></span>
 <span style="width:28px;display:flex;justify-content:center">${icon(s.ic, 21, "#111418")}</span>
 <div><div class="num" style="font-size:15px;font-weight:600">${s.km}km</div><div class="xs" style="color:#4B515A">${s.title} · ${s.sub}</div></div>
-<span style="margin-left:auto;display:flex">${tail}${s.hard && chk ? '<span style="margin-left:6px;display:flex">' + icon("check", 18, "#1FB83A") + "</span>" : ""}</span></a>`;
+<span style="margin-left:auto;display:flex">${tail}${hard && chk ? '<span style="margin-left:6px;display:flex">' + icon("check", 18, "#1FB83A") + "</span>" : ""}</span></a>`;
     }).join("");
     $("#a3-rows").innerHTML = rows;
     $("#a3-count").textContent = `${ST.checked.size}/7 확인`;
@@ -147,7 +195,7 @@
     $("#a3-ic").innerHTML = icon(s.ic, 22, "#111418");
     $("#a3-title").textContent = s.type === "S" ? `${s.n} · ${s.title}` : `${s.n} · ${s.sub} ${s.title}`;
     $("#a3-sub").textContent = `출발 ${s.km}km · 약 ${Math.max(1, Math.round(s.km / 12.4 * 26))}분 뒤`;
-    $("#a3-hard").style.display = s.hard ? "" : "none";
+    $("#a3-hard").style.display = hardOf(s) ? "" : "none";
     $("#a3-tips").innerHTML = s.steps.map((t, i) => `<li class="row" style="gap:10px"><span style="flex:none;width:22px;height:22px;border-radius:50%;border:1.5px solid #111418;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">${i + 1}</span>${t[0]} · ${t[1]}</li>`).join("");
   }
   function segBrief(s) { return `${s.sub} ${s.title}. ` + s.steps.map(t => `${t[0]}, ${t[1]}.`).join(" "); }
@@ -162,9 +210,9 @@
     $("#a4-sub").textContent = `${s.sub} · 출발 ${s.km}km`;
     $("#a4-lane").innerHTML = `<i class="dot" style="background:#1FB83A"></i> ${s.lane}`;
     $("#a4-idx").textContent = `구간 ${String(s.n).padStart(2, "0")} / 07`;
-    $("#a4-hard").style.display = s.hard ? "" : "none";
+    $("#a4-hard").style.display = hardOf(s) ? "" : "none";
     $("#a4-h").textContent = s.h;
-    $("#a4-desc").textContent = s.desc;
+    $("#a4-desc").textContent = s.desc + (s.mine && prof().records ? " " + s.mine : "");
     $("#a4-steps").innerHTML = s.steps.map(t => `<div class="row" style="gap:10px;align-items:flex-start"><span class="chip navy" style="flex:none">${t[0]}</span>${t[1]}</div>`).join("");
     if (s.type === "S") {
       $("#s-num").textContent = s.speed; $("#s-paint").textContent = s.speed; $("#s-zone").textContent = s.zone;
@@ -210,12 +258,15 @@
 
   function enterA5() {
     stopSim(); hush();
-    Object.assign(SIM, { run: true, paused: false, km: 0, spd: 0, last: 0, fired: new Set(), cam: { x: 120, y: 500 }, head: 0, finished: false });
+    Object.assign(SIM, { run: true, paused: false, km: 0, spd: 0, last: 0, fired: new Set(), cam: { x: 120, y: 500 }, head: 0, finished: false, t0: now().getTime(), mins: 0 });
     coachIdle(); $("#a5-navsub").classList.remove("on"); $("#a5-navspk").classList.remove("on");
     updateA5(0);
     setTimeout(() => { if (SIM.run && cur === "A5") { SIM.raf = requestAnimationFrame(tick); } }, 700);
   }
-  function stopSim() { SIM.run = false; cancelAnimationFrame(SIM.raf); }
+  function stopSim() {
+    SIM.run = false; cancelAnimationFrame(SIM.raf);
+    if (SIM.t0) { CLOCK.off += SIM.mins * 60000; SIM.t0 = 0; SIM.mins = 0; tickClock(); } // keep the minutes driven
+  }
   function tick(t) {
     if (!SIM.run) return;
     if (!SIM.last) SIM.last = t;
@@ -267,7 +318,7 @@
     SIM.idleT = setTimeout(() => { if (cur === "A5" && !(TTS.cur && TTS.cur.kind !== "nav")) { coachIdle(); $("#a5-coach-ic").innerHTML = icon("vol", 22, "#fff"); } }, 3500);
   }
   function finish() {
-    SIM.finished = true; SIM.spd = 0;
+    SIM.finished = true; SIM.spd = 0; ST.drove = true;
     const wait = () => {
       if (!SIM.run) return;
       if (TTS.busy || TTS.q.length) return setTimeout(wait, 300);
@@ -297,8 +348,8 @@
     $(".cl-gear", sc).textContent = SIM.finished ? "P" : "D";
     $(".cl-limit", sc).textContent = limitAt(SIM.km);
     $(".cl-odo", sc).textContent = (5035 + SIM.km).toFixed(1).replace(/\B(?=(\d{3})+(?!\d))/, ",") + "km";
-    const mins = 5 + Math.round(26 * SIM.km / 12.4);
-    $(".sb-t", sc).textContent = `8:${String(mins).padStart(2, "0")} AM`;
+    SIM.mins = Math.round(26 * SIM.km / 12.4);
+    $(".sb-t", sc).textContent = hm12(new Date(SIM.t0 + SIM.mins * 60000));
     $("#a5-left").textContent = Math.max(0, 12.4 - SIM.km).toFixed(1);
     // TBT
     const next = D.segs.find(s => s.km > SIM.km + 0.015);
@@ -337,10 +388,16 @@
   }
 
   /* ------------------------------------------------------------ C2 */
+  /* mission state for the current driver: D.progs holds 지민's, D.profiles[x].missions overrides it */
+  function missionState(p, m, i) {
+    const ms = prof().missions;
+    const st = ms ? ((ms[p.key] && ms[p.key][i]) || "todo") : m[3];
+    return m[5] === "scc" && ST.learned.scc ? "done" : st;
+  }
+  const doneOf = (p) => p.missions.filter((m, i) => missionState(p, m, i) === "done").length;
   function renderC2() {
-    const learnedScc = !!ST.learned.scc;
     $("#c2-progs").innerHTML = D.progs.map(p => {
-      const done = p.missions.filter(m => m[3] === "done" || (m[5] === "scc" && learnedScc)).length;
+      const done = doneOf(p);
       const st = done ? `${done} / ${p.missions.length} 완료` : "시작 전";
       const on = p.key === ST.prog;
       return `<a href="#" data-prog="${p.key}" class="card" style="display:block;padding:13px 15px;border-radius:14px;${on ? "background:#EEF4FE;border-color:#B9D2F6;" : ""}">
@@ -348,10 +405,9 @@
 <div class="xs" style="margin-top:3px">${p.sub}</div><div class="prog" style="margin-top:10px"><i style="width:${done / p.missions.length * 100}%"></i></div></a>`;
     }).join("");
     const p = D.progs.find(q => q.key === ST.prog);
-    const done = p.missions.filter(m => m[3] === "done" || (m[5] === "scc" && learnedScc)).length;
+    const done = doneOf(p), badge = (prof().badge && prof().badge[p.key]) || (done ? p.badge : "시작 전");
     const rows = p.missions.map((m, i) => {
-      let [title, kind, tag, st, href, feat] = m;
-      if (feat === "scc" && learnedScc) st = "done";
+      const [title, kind, tag, , href, feat] = m, st = missionState(p, m, i);
       const stH = st === "done" ? `<span class="row" style="gap:4px;font-size:13px;color:#1A7F33;font-weight:600">${icon("check", 16, "#1FB83A")}완료</span>`
         : st === "prog" ? '<span style="font-size:13px;font-weight:600;color:#1A6FD0">진행 중 3/3</span>'
         : `<a href="${href}" ${feat ? `data-feature="${feat}"` : ""} class="btn ${st === "go" ? "pri" : "sec"} sm" style="height:34px">${st === "go" && feat ? "이어서" : "시작"}</a>`;
@@ -361,18 +417,20 @@
 <span class="num" style="width:22px;height:22px;border-radius:50%;background:${st === "done" ? "#1FB83A" : "#EFEFF2"};color:${st === "done" ? "#fff" : "#4B515A"};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">${i + 1}</span>
 <div style="flex:1"><div class="row" style="gap:6px"><span style="font-size:15px;font-weight:600">${title}</span>${tagH}</div><div style="margin-top:3px">${kindH}</div></div>${stH}</div>`;
     }).join("");
-    $("#c2-detail").innerHTML = `<div style="padding:16px 16px 12px"><div class="row"><span class="h2">${p.title}</span><span class="chip ${done ? "green" : "gray"}" style="margin-left:8px">${done ? p.badge : "시작 전"}</span><span class="sm num" style="margin-left:auto">${done} / ${p.missions.length} 완료</span></div>
+    $("#c2-detail").innerHTML = `<div style="padding:16px 16px 12px"><div class="row"><span class="h2">${p.title}</span><span class="chip ${done ? "green" : "gray"}" style="margin-left:8px">${badge}</span><span class="sm num" style="margin-left:auto">${done} / ${p.missions.length} 완료</span></div>
 <div class="sm" style="margin-top:4px">${p.desc}</div></div>${rows}
 <div class="xs" style="margin-top:auto;padding:12px 16px;border-top:1px solid #F0F0F3;line-height:1.45">${p.note}</div>`;
   }
 
   /* ------------------------------------------------------------ D (features) */
-  /* learning stage 0..3 (1 위치 찾기 · 2 조건과 주의 · 3 가상 실습) */
-  const stageOf = (k) => (ST.learned[k] ? 3 : parseInt(D.features[k].prog, 10) || 0);
+  /* learning stage 0..3 (1 위치 찾기 · 2 조건과 주의 · 3 가상 실습), per driver */
+  const stageOf = (k) => (ST.learned[k] ? 3 : ST.stage[k] || 0);
+  const REVWHEN = { wiper: "비 오는 날 짧게 복습", scc: "고속도로 등 관련 상황", lka: "차선이 잘 보이는 도로" };
   function syncLearn() {
     $$("[data-learn]").forEach(el => {
-      const k = el.dataset.learn;
-      if (ST.learned[k]) { el.textContent = "학습 완료"; el.style.color = "#1A7F33"; }
+      const n = stageOf(el.dataset.learn);
+      el.textContent = n >= 3 ? "학습 완료" : el.dataset.fmt === "step" ? `${n}/3단계` : n > 0 ? `학습 중 ${n}/3` : "학습 전";
+      el.style.color = n >= 3 ? "#1A7F33" : n > 0 ? "#1A6FD0" : "#646B76";
     });
     const n = { done: 0, prog: 0, todo: 0 };
     Object.keys(D.features).forEach(k => n[ST.learned[k] ? "done" : stageOf(k) > 0 ? "prog" : "todo"]++);
@@ -381,46 +439,17 @@
       const k = el.dataset.revchip;
       el.innerHTML = ST.learned[k] && ST.rev[k] ? '<span class="chip blue">주행 중 추천 켜짐</span>' : "";
     });
-    const st = $("#f4-scc-st");
-    if (st && ST.learned.scc) st.textContent = "학습 완료 · 고속도로 등 관련 상황";
-    const lst = $("#f4-lka-st");
-    if (lst && ST.learned.lka) lst.textContent = "학습 완료 · 차선이 잘 보이는 도로";
+    Object.entries(REVWHEN).forEach(([k, when]) => {
+      const e = $(`#f4-${k}-st`), s = stageOf(k);
+      if (e) e.textContent = s >= 3 ? `학습 완료 · ${when}` : `${s > 0 ? "학습 중" : "학습 전"} · 학습을 마치면 켤 수 있어요`;
+    });
+  }
+  function enterD2() {
+    syncLearn();
+    $("#d2-art").innerHTML = CTRL.view("wheel", { compact: true, sel: ["assist", "setUp", "setDown"] });
   }
 
-  /* three-scene.js is an ES module: it needs http(s) with a JavaScript MIME type (see serve.py).
-     Some servers send .js as text/plain (e.g. `python -m http.server` on Windows when the registry
-     says so) and the browser refuses the module. Then the same files are re-loaded as Blob URLs
-     with the right type and their imports rewired to those Blob URLs. */
-  let threeMod = null, threeWarned = false, d3Loading = false;
-  function loadThree() {
-    if (location.protocol === "file:") return Promise.reject(new Error("file:// cannot load ES modules"));
-    // check the MIME first so a refused module does not leave an error in the console
-    const jsType = fetch("js/three-scene.js", { method: "HEAD", cache: "no-store" })
-      .then(r => /javascript|ecmascript/i.test(r.headers.get("content-type") || ""))
-      .catch(() => true);
-    return (threeMod ||= jsType.then(ok => {
-      if (ok) return import("./three-scene.js");
-      console.info("서버가 .js를 JavaScript 형식으로 보내지 않아서 3D 모듈을 Blob으로 불러와요");
-      return importViaBlob();
-    }));
-  }
-  async function importViaBlob() {
-    const src = (u) => fetch(u, { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r.text(); });
-    const blob = (code) => URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
-    const rewire = (code, from, to) => { if (!code.includes(from)) throw new Error(`import ${from} not found`); return code.split(from).join(JSON.stringify(to)); };
-    const three = blob(await src("vendor/three.module.min.js"));
-    const orbit = blob(rewire(await src("vendor/OrbitControls.js"), "'./three.module.min.js'", three));
-    let scene = await src("js/three-scene.js");
-    scene = rewire(rewire(scene, '"../vendor/three.module.min.js"', three), '"../vendor/OrbitControls.js"', orbit);
-    return import(blob(scene));
-  }
-  function threeFail(err) {
-    console.warn("3D 로드 실패 · 2D 그림으로 표시", err);
-    if (threeWarned || location.protocol === "file:") return;
-    threeWarned = true;
-    toast("3D 모델을 불러오지 못했어요 · python serve.py로 열어 주세요", 6000);
-  }
-
+  /* D3: 운전석 전체 그림에서 위치 찾기 · 확대 그림 · 설명서 그림 (js/controls.js) */
   function enterD3() {
     const f = D.features[ST.feature], n = stageOf(ST.feature);
     $("#d3-name").textContent = f.name;
@@ -436,47 +465,40 @@
     $("#d3-s3-ic").innerHTML = n >= 3 ? icon("check", 17, "#1FB83A") : dot(3, false);
     $("#d3-s3").textContent = n >= 3 ? "완료" : "다음";
     $("#d3-s3-row").classList.toggle("mut", n < 3);
-    if (window.D3S) { window.D3S.select(ST.feature); window.D3S.resume(); return; }
-    if (d3Loading) return;
-    d3Loading = true;
-    loadThree().then(m => {
-      window.D3S = m.init($("#d3-canvas"), $("#d3-markers"), (key) => { ST.feature = key; enterD3(); });
-      $("#d3-fallback").style.display = "none";
-      window.D3S.select(ST.feature);
-      if (cur !== "D3") window.D3S.pause();
-    }).catch(threeFail).finally(() => { d3Loading = false; });
+    $("#d3-loc").innerHTML = icon("car", 14, "#1F6FE0") + f.loc;
+    renderD3Art();
+  }
+  function renderD3Art() {
+    const k = ST.feature, f = D.features[k], v = ST.d3view === "manual" && !f.manual ? "all" : ST.d3view;
+    $$("#d3-views .tab").forEach(t => t.classList.toggle("on", t.dataset.view === v));
+    $('#d3-views [data-view="manual"]').style.display = f.manual ? "" : "none";
+    const art = $("#d3-art");
+    if (v === "zoom") {
+      art.innerHTML = `<div class="d3-zoom">${CTRL.view(f.view, { sel: [...new Set(f.seq.map(i => f.parts[i]))] })}</div>`;
+    } else if (v === "manual") {
+      art.innerHTML = `<div class="d3-man"><img src="${f.manual}" alt="${f.name} 조작부 · 취급설명서 그림"/><div class="xs">출처 · 그랜저 Hybrid 2027 취급설명서 (현대자동차) · 버튼 위치 참고용</div></div>`;
+    } else {
+      const names = Object.fromEntries(Object.entries(D.features).map(([key, x]) => [key, x.name]));
+      art.innerHTML = CTRL.overview(k, names);
+    }
   }
 
-  /* D4: 3D practice when available, 2D button pad as fallback */
-  const D4S = { step: 0, p3: null, loading: false };
-  const partsOf = () => D.features[ST.feature].parts || [];
-  function enterD4() {
-    D4S.step = 0; $("#d4-msg").className = "d4msg";
-    if (D4S.p3) { D4S.p3.resume(); D4S.p3.setFeature(ST.feature, partsOf()); }
-    renderD4();
-    if (D4S.p3 || D4S.loading) return;
-    D4S.loading = true;
-    loadThree().then(m => {
-      $("#d4-3d").hidden = false; $("#d4-pad").style.display = "none";
-      D4S.p3 = m.practice($("#d4-canvas"), $("#d4-tip"), (id) => { const i = partsOf().indexOf(id); if (i > -1) pressVB(i, null); });
-      D4S.p3.setFeature(ST.feature, partsOf());
-      sync3D();
-      if (cur !== "D4") D4S.p3.pause();
-    }).catch(threeFail).finally(() => { D4S.loading = false; });
-  }
-  function sync3D() {
-    if (!D4S.p3) return;
-    const f = D.features[ST.feature], ps = partsOf();
-    D4S.p3.mark(D4S.step < f.seq.length ? ps[f.seq[D4S.step]] : null, f.seq.slice(0, D4S.step).map(i => ps[i]));
+  /* D4: 확대 그림 위의 실제 버튼 자리를 순서대로 눌러요 */
+  const D4S = { step: 0 };
+  function enterD4() { D4S.step = 0; $("#d4-msg").className = "d4msg"; renderD4(); }
+  /* what the drawing shows after `st` correct presses */
+  function ctlState(k, st) {
+    if (k === "wiper") return { pos: Math.min(st, 2) };              // OFF → 자동 느린 감도 → 보통 감도
+    if (k === "autohold") return { brake: st >= 1, hold: st >= 2 };
+    if (k === "defog") return { defog: st >= 1, fan: st >= 2 ? 3 : 2 };
+    return {};
   }
   function renderD4() {
     const key = ST.feature, f = D.features[key], n = f.seq.length, st = D4S.step, done = st >= n;
-    $("#d4-pad").style.gridTemplateColumns = `repeat(${f.pad.length > 4 ? 3 : 2},124px)`;
-    $("#d4-pad").innerHTML = f.pad.map((b, i) => {
-      const doneB = f.seq.indexOf(i) > -1 && f.seq.indexOf(i) < st;
-      const next = !done && f.seq[st] === i;
-      return `<button class="vbtn${doneB ? " done" : ""}${next ? " next" : ""}" data-vb="${i}"><b>${b[0]}</b><small>${b[1]}</small><span class="ok">${icon("check", 13, "#fff")}</span></button>`;
-    }).join("");
+    $("#d4-ctl").innerHTML = CTRL.view(f.view, {
+      parts: f.parts, labels: f.pad.map(p => p[0]), interactive: !done,
+      next: done ? null : f.parts[f.seq[st]], state: ctlState(key, st),
+    });
     $("#d4-cnt").textContent = `${Math.min(st, n)} / ${n}`;
     $("#d4-preview").textContent = f.preview[Math.min(st, f.preview.length - 1)];
     const g = f.gap ? f.gap[Math.min(st, f.gap.length - 1)] : 0;
@@ -489,14 +511,12 @@
       $("#d4-done-sub").textContent = `${f.name} · ${n}단계 모두 완료`;
       const t = $("#d4-tgl"); t.classList.toggle("on", !!ST.rev[key]); t.setAttribute("aria-checked", !!ST.rev[key]);
     }
-    sync3D();
   }
-  /* i: pad index. el: the 2D button, or null when pressed in the 3D view */
+  /* i: index in f.pad / f.parts. el: the pressed key in the drawing */
   function pressVB(i, el) {
-    const f = D.features[ST.feature], id = partsOf()[i];
+    const f = D.features[ST.feature];
     if (D4S.step >= f.seq.length) return;
     if (f.seq[D4S.step] === i) {
-      if (!el && D4S.p3) D4S.p3.act(id);
       D4S.step++;
       const m = $("#d4-msg"); m.className = "d4msg ok"; m.textContent = `좋아요! ${f.stepText[D4S.step - 1]} 완료`;
       if (D4S.step >= f.seq.length) {
@@ -504,9 +524,10 @@
         sayUI(`${f.name} 학습을 완료했어요.`);
       }
       renderD4();
+      const nx = $("#d4-ctl .key.next");
+      if (nx && document.activeElement === document.body) nx.focus({ preventScroll: true });
     } else {
-      if (el) { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
-      else if (D4S.p3) D4S.p3.wrong(id);
+      el.classList.remove("shake"); el.getBoundingClientRect(); el.classList.add("shake");
       const m = $("#d4-msg"); m.className = "d4msg warn"; m.textContent = `지금은 '${f.pad[f.seq[D4S.step]][0]}' 차례예요 · 파란색으로 빛나는 곳을 눌러요`;
     }
   }
@@ -527,9 +548,41 @@
     toast(on ? `${D.features[key].name} · 주행 중 복습을 켰어요` : `${D.features[key].name} · 주행 중 복습을 껐어요`);
   }
 
+  /* ------------------------------------------------------------ profile switch (F2) */
+  const F2 = { pick: ST.profile }; // tile picked on F2, applied by [이 프로필로 계속하기]
+  function setProfile(name) {
+    if (!D.profiles[name]) return;
+    if (name !== ST.profile) {
+      PSTORE[ST.profile] = Object.fromEntries(PER.map(k => [k, ST[k]]));
+      Object.assign(ST, PSTORE[name] || freshProfile(name));
+      ST.profile = name;
+    }
+    applyProfile();
+  }
+  /* name, avatar and [data-pf] texts on every screen. 지민 keeps the text written in the screen files */
+  function applyProfile() {
+    const p = prof(), name = ST.profile;
+    $$(".prof").forEach(e => { e.innerHTML = `<span class="av">${p.av}</span>${name}`; });
+    $$("[data-pname]").forEach(e => { e.textContent = name; });
+    $$("[data-pav]").forEach(e => { e.textContent = p.av; });
+    $$("[data-pf]").forEach(e => {
+      if (e.pf0 === undefined) e.pf0 = e.innerHTML;
+      const v = p.t && p.t[e.dataset.pf];
+      e.innerHTML = v !== undefined ? v : e.pf0;
+    });
+    $$("[data-rec]").forEach(e => { e.style.display = p.records ? "" : "none"; });
+    syncF2(); syncSettings(); renderA1();
+  }
+  function syncF2() {
+    F2.pick = ST.profile;
+    $$("#F2 .ptile").forEach(t => t.classList.toggle("on", t.dataset.prof === ST.profile));
+    const chip = $("#F2 .ptile .chip.blue"), tile = $(`#F2 .ptile[data-prof="${ST.profile}"]`);
+    if (chip && tile && chip.parentNode !== tile) tile.prepend(chip); // '현재 운전자' follows the driver
+  }
+
   /* ------------------------------------------------------------ clicks */
   document.addEventListener("click", (e) => {
-    const a = e.target.closest("a,button,.tgl,.pick");
+    const a = e.target.closest("a,button,.tgl,.pick,.key.act,.spot");
     if (!a) return;
     if (a.matches('a[href="#"]')) e.preventDefault();
     if (a.dataset.feature) ST.feature = a.dataset.feature;
@@ -540,7 +593,7 @@
     if (a.dataset.say) {
       e.preventDefault();
       const s = D.segs[ST.seg - 1];
-      sayUI({ brief: D.brief, seg: segBrief(s), feature: D.features[ST.feature].say }[a.dataset.say]);
+      sayUI({ brief: prof().say || D.brief, seg: segBrief(s), feature: D.features[ST.feature].say }[a.dataset.say]);
       toast("음성 안내 재생 중");
       return;
     }
@@ -562,7 +615,7 @@
       return go("A3");
     }
     // A5
-    if (a.id === "a5-skip") { stopSim(); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
+    if (a.id === "a5-skip") { SIM.mins = 26; ST.drove = true; stopSim(); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
     // B3
     if (a.matches(".b3pt")) { ST.b3 = +a.dataset.seg; renderB3(); if (ST.b3 === 3) toast("이미 어려운 구간으로 표시한 곳이에요"); return; }
     if (a.matches(".pick")) { a.classList.toggle("on"); return; }
@@ -570,11 +623,12 @@
     // C2
     if (a.dataset.prog) { ST.prog = a.dataset.prog; renderC2(); return; }
     // D4
-    if (a.matches(".vbtn")) return pressVB(+a.dataset.vb, a);
+    if (a.matches(".key.act")) return pressVB(+a.dataset.vb, a);
     if (a.id === "d4-tgl") { setRev(ST.feature, !ST.rev[ST.feature]); renderD4(); return; }
-    if (a.id === "d4-retry") { D4S.step = 0; $("#d4-msg").className = "d4msg"; if (D4S.p3) D4S.p3.setFeature(ST.feature, partsOf()); return renderD4(); }
-    // D3 views
-    if (a.closest("#d3-views") && a.dataset.view) { $$("#d3-views .tab").forEach(t => t.classList.toggle("on", t === a)); window.D3S && window.D3S.view(a.dataset.view); return; }
+    if (a.id === "d4-retry") { D4S.step = 0; $("#d4-msg").className = "d4msg"; return renderD4(); }
+    // D3: 다른 기능 위치 · 보기 전환
+    if (a.matches(".spot")) { ST.feature = a.dataset.spot; return enterD3(); }
+    if (a.closest("#d3-views") && a.dataset.view) { ST.d3view = a.dataset.view; return renderD3Art(); }
     // E2
     if (a.closest("#e2-tg") && a.dataset.c) {
       $$("#e2-tg .tab").forEach(t => t.classList.toggle("on", t === a));
@@ -584,9 +638,9 @@
     // F2
     if (a.matches(".ptile")) {
       if (a.dataset.prof === "add") return toast("프로필 추가는 목업에서 생략했어요");
-      $$(".ptile").forEach(t => t.classList.toggle("on", t === a)); ST.profile = a.dataset.prof; return;
+      $$(".ptile").forEach(t => t.classList.toggle("on", t === a)); F2.pick = a.dataset.prof; return;
     }
-    if (a.id === "f2-go") { if (ST.profile !== "지민") toast("시연 데이터는 지민 프로필만 있어요"); return go("A1"); }
+    if (a.id === "f2-go") { const was = ST.profile; setProfile(F2.pick); if (ST.profile !== was) toast(`${ST.profile} 님 프로필로 바꿨어요`); return go("A1"); }
     // F4
     if (a.matches(".tgl[data-key]")) {
       const k = a.dataset.key;
@@ -600,16 +654,17 @@
 
   /* ------------------------------------------------------------ app launch (splash) */
   let launching = false;
-  const LOAD_STEPS = ["차량 정보를 확인하고 있어요", "지민 님의 프로필을 불러오고 있어요", "오늘의 출근길을 준비하고 있어요"];
+  const LOAD_STEPS = () => ["차량 정보를 확인하고 있어요", `${ST.profile} 님의 프로필을 불러오고 있어요`, "오늘의 출근길을 준비하고 있어요"];
   function launch() {
     if (launching) return;
     launching = true;
     const sp = $("#splash"), st = $(".sp-st", sp);
     $("#L0").classList.add("launching");
-    st.textContent = LOAD_STEPS[0];
+    const steps = LOAD_STEPS();
+    st.textContent = steps[0];
     sp.classList.remove("out"); void sp.offsetWidth; sp.classList.add("on");
-    setTimeout(() => (st.textContent = LOAD_STEPS[1]), 1500);
-    setTimeout(() => (st.textContent = LOAD_STEPS[2]), 2050);
+    setTimeout(() => (st.textContent = steps[1]), 1500);
+    setTimeout(() => (st.textContent = steps[2]), 2050);
     setTimeout(() => {
       go("A1");
       sp.classList.add("out");
@@ -675,6 +730,9 @@
   });
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("textarea,input")) return;
+    // keys and spots in the 2D drawings are SVG groups: Enter/Space presses them like buttons
+    const k = e.target.closest(".key.act,.spot");
+    if (k && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); k.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
     if (e.key === "`") { P.hidden = !P.hidden; syncPanel(); }
     else if (e.key === "Escape") P.hidden = true;
     else if (e.key === " " && cur === "A5") { e.preventDefault(); SIM.paused = !SIM.paused; if (hasTTS) SIM.paused ? speechSynthesis.pause() : speechSynthesis.resume(); toast(SIM.paused ? "일시정지" : "재생", 900); }
@@ -696,8 +754,9 @@
     buildPanel();
     syncVoiceSelects();
     if (!location.hash) history.replaceState(null, "", "#L0");
+    applyProfile();
+    tickClock(); setInterval(tickClock, 5000);
     show();
-    syncSettings();
     setTimeout(() => toast("` 키: 시연 패널 · F: 전체 화면", 3200), 600);
   }).catch(err => {
     console.error("화면 파일을 불러오지 못했어요", err);

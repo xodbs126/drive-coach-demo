@@ -59,10 +59,10 @@
     <div class="bd">
       <div style="position:absolute;left:0;top:0;width:250px;height:504px;border-radius:18px;background:linear-gradient(170deg,#E3E8F0 0%,#EEF1F6 45%,#F6F6F8 100%);overflow:hidden">
         <div style="position:absolute;left:22px;top:20px;font-size:50px;font-weight:800;letter-spacing:-0.04em;color:#0E1116">Hello.</div>
-        <div style="position:absolute;left:24px;top:88px;font-size:14px;font-weight:600;color:#0B2A5B">지민 님 · 첫 출근길 적응 3일 차</div>
-        <div class="xs" style="position:absolute;left:24px;top:110px">주행 데이터 수신 · 11월 9일 08:02</div>
-        <img src="assets/car-side.png" alt="더 뉴 그랜저 측면" style="position:absolute;left:4px;top:190px;width:242px;height:80px;mix-blend-mode:multiply"/>
-        <div class="sm" style="position:absolute;left:0;right:0;top:282px;text-align:center">더 뉴 그랜저 · 2026</div>
+        <div style="position:absolute;left:24px;top:88px;font-size:14px;font-weight:600;color:#0B2A5B" data-pf="hello">지민 님 · 첫 출근길 적응 3일 차</div>
+        <div class="xs" style="position:absolute;left:24px;top:110px" data-pf="recv">주행 데이터 수신 · 11월 9일 08:02</div>
+        <img src="assets/car-side.png" alt="그랜저 하이브리드 측면" style="position:absolute;left:4px;top:190px;width:242px;height:80px;mix-blend-mode:multiply"/>
+        <div class="sm" style="position:absolute;left:0;right:0;top:282px;text-align:center">그랜저 Hybrid · 2027</div>
         <div style="position:absolute;left:16px;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px">
           <div class="row" style="gap:8px;background:rgba(255,255,255,.75);border-radius:10px;padding:8px 10px;font-size:13px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1A9BE8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
             <path d="M5 16v3M19 16v3"/>
@@ -95,12 +95,12 @@
             <a href="#A5" style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
 <span class="circ" style="width:60px;height:60px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B2A5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M20 4L4 11l7 2 2 7z"/></svg></span><span style="font-size:13px;font-weight:600;color:#0B2A5B">바로 출발</span></a>
           </div>
-          <div class="xs" style="text-align:center;margin-top:12px">주요 구간 7곳 · 2곳 확인 · 어려운 구간 1곳</div>
+          <div id="a1-segs" class="xs" style="text-align:center;margin-top:12px">주요 구간 7곳 · 2곳 확인 · 어려운 구간 1곳</div>
         </div>
         <div class="card" style="height:96px;display:flex;align-items:center">
           <div style="flex:1;text-align:center">
-            <div class="num" style="font-size:38px;font-weight:300;color:#1A9BE8;line-height:1">86<span style="font-size:15px;font-weight:500">점</span></div>
-            <div class="xs" style="margin-top:6px">최근 운전 점수 · 4점 ↑</div>
+            <div class="num" style="font-size:38px;font-weight:300;color:#1A9BE8;line-height:1" data-pf="score">86<span style="font-size:15px;font-weight:500">점</span></div>
+            <div class="xs" style="margin-top:6px" data-pf="scoreSub">최근 운전 점수 · 4점 ↑</div>
           </div>
           <div style="width:1px;height:52px;background:#ECECEF"></div>
           <div style="flex:1;text-align:center">
@@ -116,9 +116,8 @@
             <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/>
             <path d="M15.5 9a4.5 4.5 0 010 6M18 6.5a8 8 0 010 11"/>
           </svg> 듣기</a></div>
-          <p style="margin:12px 0 0;font-size:15px;line-height:1.55">어제 어렵다고 표시한 <b style="font-weight:700">시청 사거리 좌회전</b>이 있어요. 출발 전에 리허설로 살펴보세요.</p>
-          <div class="xs" style="margin-top:10px">근거 · 11월 8일 직접 표시 1건, 급감속 1회</div>
-          <div class="xs" style="margin-top:3px">내비 안내가 나오면 코칭은 기다려요</div>
+          <p style="margin:12px 0 0;font-size:15px;line-height:1.55" data-pf="brief">어제 어렵다고 표시한 <b style="font-weight:700">시청 사거리 좌회전</b>이 있어요. 출발 전에 리허설로 살펴보세요.</p>
+          <div class="xs" style="margin-top:10px" data-pf="why">근거 · 11월 8일 직접 표시 1건, 급감속 1회</div>
         </div>
       </div>
       <div style="position:absolute;left:574px;top:0;width:280px;display:flex;flex-direction:column;gap:10px">
@@ -490,14 +489,14 @@
             </svg><div>
               <div style="font-size:14px;font-weight:600">회사</div>
               <div class="xs">12.4km · 약 26분</div>
-            </div><span class="num" style="margin-left:auto;font-size:13px">08:28 도착</span></div>
+            </div><span class="num" style="margin-left:auto;font-size:13px"><span data-eta>08:28</span> 도착</span></div>
             <div class="row" style="gap:10px;padding:9px 2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E5191C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
               <path d="M12 4l9 16H3z"/>
               <path d="M12 10v4.5"/>
               <circle cx="12" cy="17.3" r=".4"/>
             </svg><div>
               <div style="font-size:14px;font-weight:600">시청 사거리 좌회전</div>
-              <div class="xs">어려운 구간 · 출발 2.6km</div>
+              <div class="xs" data-pf="hardSub">어려운 구간 · 출발 2.6km</div>
             </div><span style="margin-left:auto;font-size:12px;font-weight:600;color:#1A6FD0">3번째 구간</span></div>
           </div>
         </div>
@@ -509,8 +508,8 @@
               <circle cx="18" cy="6" r="2"/>
               <path d="M8 18h8.5a3.5 3.5 0 000-7h-9a3.5 3.5 0 010-7H16"/>
             </svg><div>
-              <div style="font-size:14px;font-weight:600">첫 출근길 적응</div>
-              <div class="xs">미션 2/5 · 3일 차</div>
+              <div style="font-size:14px;font-weight:600" data-pf="progT">첫 출근길 적응</div>
+              <div class="xs" data-pf="progS">미션 2/5 · 3일 차</div>
             </div><span style="margin-left:auto;font-size:12px;font-weight:600;color:#1A6FD0">진행 중</span></a>
             <a href="#D2" class="row" style="gap:10px;padding:11px 2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B2A5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">
               <circle cx="12" cy="12" r="8.5"/>
@@ -519,10 +518,10 @@
             </svg><div>
               <div style="font-size:14px;font-weight:600">스마트 크루즈 컨트롤</div>
               <div class="xs">내 차 기능 학습</div>
-            </div><span data-learn="scc" style="margin-left:auto;font-size:12px;font-weight:600;color:#1A6FD0">2/3단계</span></a>
+            </div><span data-learn="scc" data-fmt="step" style="margin-left:auto;font-size:12px;font-weight:600;color:#1A6FD0">2/3단계</span></a>
             <a href="#E2" class="row" style="gap:10px;padding:11px 2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B2A5B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M5 20V10M10 20V5M15 20v-7M20 20v-4"/></svg><div>
               <div style="font-size:14px;font-weight:600">같은 길 성장</div>
-              <div class="xs">74 → 82 → 86점</div>
+              <div class="xs" data-pf="growth">74 → 82 → 86점</div>
             </div><span style="margin-left:auto"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#646B76" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M9.5 6l6 6-6 6"/></svg></span></a>
           </div>
         </div>

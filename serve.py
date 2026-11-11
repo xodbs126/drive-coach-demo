@@ -1,8 +1,8 @@
 """Local preview server for the mockup.
 
 `python -m http.server` takes MIME types from the OS. On some Windows PCs the
-registry maps .js to text/plain, and browsers then refuse to run ES modules
-(the 3D cockpit in D3/D4). This server pins the types the site needs, listens
+registry maps .js to text/plain, and browsers may keep stale copies of edited
+files. This server pins the types the site needs, listens
 on IPv4 and IPv6 (so http://localhost reaches it), refuses to share a port
 that is already in use, and disables caching so edits show up on reload.
 
