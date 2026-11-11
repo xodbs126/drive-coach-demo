@@ -35,12 +35,30 @@ export function initCar(getState) {
   const road = new THREE.Mesh(new THREE.PlaneGeometry(90, 50), new THREE.MeshStandardMaterial({ color: 0xF1F3F6, roughness: 1 }));
   road.rotation.x = -Math.PI / 2; scene.add(road);
   const dashes = new THREE.Group(); scene.add(dashes);
-  const dashMat = new THREE.MeshBasicMaterial({ color: 0xC9CED6 }), dashGeo = new THREE.PlaneGeometry(1.6, 0.12);
+  const dashMat = new THREE.MeshBasicMaterial({ color: 0xC9CED6, transparent: true }), dashGeo = new THREE.PlaneGeometry(1.6, 0.12);
   for (const z of [-1.9, 1.9]) {
     for (let i = 0; i < 16; i++) {
       const d = new THREE.Mesh(dashGeo, dashMat);
       d.rotation.x = -Math.PI / 2; d.position.set(-24 + i * 3.2, 0.005, z); dashes.add(d);
     }
+  }
+
+  /* ---------- parking lot (shown in P instead of the lane lines) ----------
+     The car stands nose-in in a 2.8 × 5.4m stall between other stalls, with wheel stoppers.
+     Light cars are parked on the passenger side (added after the car is built, see 'neighbours'). */
+  const lot = new THREE.Group(); scene.add(lot);
+  const lotMat = new THREE.MeshBasicMaterial({ color: 0xB3BAC4, transparent: true, opacity: 0 });
+  const stopMat = new THREE.MeshStandardMaterial({ color: 0xD5D9DF, roughness: 0.9, transparent: true, opacity: 0 });
+  const line = (len, w, x, z, alongX) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(alongX ? len : w, alongX ? w : len), lotMat);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.006, z); lot.add(m);
+  };
+  const HEAD = 2.65, BACK = -2.75, STALL = 2.8;
+  for (let i = -3; i <= 2; i++) line(HEAD - BACK, 0.13, (HEAD + BACK) / 2, (i + 0.5) * STALL, true); // side lines of 5 stalls
+  line(STALL * 5, 0.13, HEAD, 0, false);                                                          // head line across the stalls
+  for (let i = -2; i <= 2; i++) {                                                                  // wheel stoppers
+    const s = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.11, 1.5), stopMat);
+    s.position.set(2.18, 0.055, i * STALL); lot.add(s);
   }
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 3.0), new THREE.MeshBasicMaterial({ map: shadowTex(), transparent: true, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.01; scene.add(shadow);
@@ -137,6 +155,20 @@ export function initCar(getState) {
     }
   }
 
+  /* neighbours: light cars in the stalls on the passenger side (-z). The driver side stays empty
+     so the camera (front-left) and the opening driver door are never blocked. */
+  const ghostBody = new THREE.MeshStandardMaterial({ color: 0xF3F5F8, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0 });
+  const ghostGlass = new THREE.MeshStandardMaterial({ color: 0xCFD5DD, roughness: 0.3, transparent: true, opacity: 0 });
+  const ghostTire = new THREE.MeshStandardMaterial({ color: 0x9AA1AB, roughness: 0.9, transparent: true, opacity: 0 });
+  for (const z of [-STALL, -2 * STALL]) {
+    const n = new THREE.Group(); n.position.z = z;
+    n.add(new THREE.Mesh(body.geometry, ghostBody), new THREE.Mesh(cabin.geometry, ghostGlass));
+    for (const x of [WB, -WB]) for (const zs of [1, -1]) {
+      const t = new THREE.Mesh(tireG, ghostTire); t.rotation.x = Math.PI / 2; t.position.set(x, R, zs * 0.83); n.add(t);
+    }
+    lot.add(n);
+  }
+
   /* ---------- camera rigs ---------- */
   // az: angle around the car seen from above (0 = in front, π = behind), r: distance, h: height.
   // The camera orbits between rigs instead of moving in a straight line through the car.
@@ -150,7 +182,7 @@ export function initCar(getState) {
   placeCamera();
 
   /* ---------- loop ---------- */
-  let raf = 0, last = 0, blink = 0, roll = 0;
+  let raf = 0, last = 0, blink = 0, roll = 0, parkedK = 1; // parkedK: 1 = parking lot shown (starts in P)
   const ease = (cur, to, k) => cur + (to - cur) * Math.min(1, k);
   function frame(t) {
     raf = requestAnimationFrame(frame);
@@ -169,12 +201,17 @@ export function initCar(getState) {
     // road moves under the car; wheels turn (slowed down so the spokes stay readable)
     roll = (roll + v * dt) % 3.2;
     dashes.position.x = -roll;
+    // P: parking stall fades in, lane lines fade out (stopped in D/R/N keeps the road: 신호 대기)
+    parkedK = ease(parkedK, st.gear === "P" ? 1 : 0, dt * 3);
+    lotMat.opacity = parkedK; stopMat.opacity = parkedK; dashMat.opacity = 1 - parkedK;
+    ghostBody.opacity = ghostGlass.opacity = ghostTire.opacity = parkedK;
+    lot.visible = parkedK > 0.01; dashes.visible = parkedK < 0.99;
     wheels.forEach(w => { w.rotation.z -= v * dt / R * 0.35; });
 
     // doors and trunk swing
     for (const [k, d] of Object.entries(doors)) {
       d.a = ease(d.a, st.doors[k] ? 1 : 0, dt * 5);
-      d.hinge.rotation.y = d.side * d.a * 1.05;
+      d.hinge.rotation.y = d.side * d.a * 1.0; // ≈57°: the open door stays clear of the next stall's car
     }
     trunkS.a = ease(trunkS.a, st.doors.trunk ? 1 : 0, dt * 4);
     trunk.rotation.z = -trunkS.a * 1.15;
