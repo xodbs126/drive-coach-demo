@@ -71,15 +71,20 @@
      One source for the left cluster on every screen. Two inputs drive it:
      - A5 모의 주행 (while SIM.run, updateA5 writes VS)
      - 시연 패널의 기어 · ACCEL · BRAKE (or ↑ ↓ keys): simple physics in vsStep()
-     While the car moves, screens in LOCK are covered (기획 원칙 3: 정차 중에만). */
+     Screens in LOCK open only while parked (기획 원칙 3). As in Android Automotive's
+     CarUxRestrictionsManager, 'parked' means gear P — stopped in D/R/N (신호 대기) is not enough
+     (기획서 8.1: 단순 속도 0km/h 판정이 아니라 차량 UX 제한 상태). */
   const VS = { gear: "P", speed: 0, odo: 5035, limit: 50, pedal: null, moved: false, raf: 0, last: 0, warned: false,
     turn: null, doors: { fl: false, fr: false, rl: false, rr: false, trunk: false } };
   const ROAD_LIMIT = 50; // 시연 패널로 움직일 때의 도로 제한속도 (집 근처 도심 · 시뮬레이션)
   const doorOpen = () => Object.values(VS.doors).some(Boolean);
   const LOCK = { A3: "첫길 리허설", A4: "구간 상세 학습", B3: "지도 분석", D3: "실내 그림 조작", D4: "가상 실습", F2: "프로필 전환" };
   const moving = () => VS.speed >= 0.5;
+  /* driving state: "parked" (P) · "idling" (stopped in D/R/N) · "moving" */
+  const uxState = () => (moving() ? "moving" : VS.gear === "P" ? "parked" : "idling");
+  const parked = () => uxState() === "parked";
   const fmtOdo = () => (VS.moved ? VS.odo.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : VS.odo.toLocaleString("en-US")) + "km";
-  let wasMoving = false;
+  let wasUx = "parked";
   function syncCluster() {
     const sp = String(Math.round(VS.speed)), odo = fmtOdo();
     // road limit sign: shown while driving; red when over it (지능형 속도 제한 보조처럼)
@@ -92,7 +97,7 @@
     });
     $$("[data-vs=gear]").forEach(e => { e.textContent = VS.gear; });
     $$("[data-vs=state]").forEach(e => { e.textContent = moving() ? "주행 중" : "정차 중"; });
-    if (moving() !== wasMoving) { wasMoving = moving(); syncLock(); }
+    if (uxState() !== wasUx) { wasUx = uxState(); syncLock(); }
     if (!P.hidden) {
       $("#p-vs-speed").textContent = sp;
       $$("[data-p-gear]", P).forEach(b => b.classList.toggle("on", b.dataset.pGear === VS.gear));
@@ -100,19 +105,21 @@
       $$("[data-p-door]", P).forEach(b => b.classList.toggle("on", VS.doors[b.dataset.pDoor]));
     }
   }
-  /* cover the current screen while moving · removed when the car stops */
+  /* cover the current screen unless parked · removed when the gear goes to P */
   function syncLock() {
     const id = cur, sc = id && $("#" + id);
     $$(".drvlock").forEach(o => { if (!sc || !sc.contains(o)) o.style.display = "none"; });
     if (!sc || !LOCK[id]) return;
     const bd = $(".bd", sc);
     let ov = $(".drvlock", bd);
-    if (!moving()) { if (ov) ov.style.display = "none"; return; }
+    if (parked()) { if (ov) ov.style.display = "none"; return; }
     if (!ov) { ov = document.createElement("div"); ov.className = "drvlock"; bd.appendChild(ov); }
+    const idle = uxState() === "idling";
     ov.style.display = "";
     ov.innerHTML = `<div class="norec-in"><span class="norec-ic">${icon("lock", 30, "#1F6FE0")}</span>
-<div class="h2">주행 중에는 쓸 수 없어요</div>
-<div class="sm" style="line-height:1.55">${LOCK[id]}은 정차 중에만 할 수 있어요.<br/>차가 멈추면 이 화면이 다시 열려요.</div></div>`;
+<div class="h2">${idle ? "기어를 P로 바꾸면 열려요" : "주행 중에는 쓸 수 없어요"}</div>
+<div class="sm" style="line-height:1.55">${idle ? `신호 대기처럼 ${VS.gear}에 두고 멈춘 상태에서는 ${LOCK[id]}을 할 수 없어요.<br/>주차(P)한 뒤에 이 화면이 다시 열려요.`
+    : `${LOCK[id]}은 주차(P)한 상태에서만 할 수 있어요.<br/>차를 세우고 P로 바꾸면 이 화면이 다시 열려요.`}</div></div>`;
   }
   const simDriving = () => SIM.run && !SIM.finished;
   function setGear(g) {
@@ -396,12 +403,16 @@
     updateA5(0);
     setTimeout(() => { if (SIM.run && cur === "A5") { SIM.raf = requestAnimationFrame(tick); } }, 700);
   }
-  function stopSim() {
+  /* ends the simulated drive. arrive: [도착으로 건너뛰기] — count the whole route.
+     Leaving A5 (arrived, skipped or in the middle) ends the drive: the car stands still in P. */
+  function stopSim(arrive) {
+    const active = !!SIM.t0;
     SIM.run = false; cancelAnimationFrame(SIM.raf);
-    if (SIM.t0) { CLOCK.off += SIM.mins * 60000; SIM.t0 = 0; SIM.mins = 0; tickClock(); } // keep the minutes driven
-    if (SIM.finished) { VS.speed = 0; VS.gear = "P"; } // arrived and parked
-    VS.limit = ROAD_LIMIT; VS.turn = null;
-    syncCluster(); vsKick(); // left A5 while moving: the car keeps rolling and slows down
+    if (!active) return;
+    if (arrive) { SIM.finished = true; SIM.km = 12.4; SIM.mins = 26; }
+    CLOCK.off += SIM.mins * 60000; SIM.t0 = 0; SIM.mins = 0; tickClock(); // keep the minutes driven
+    Object.assign(VS, { speed: 0, gear: "P", pedal: null, odo: SIM.odo0 + SIM.km, limit: ROAD_LIMIT, turn: null });
+    syncCluster();
   }
   function tick(t) {
     if (!SIM.run) return;
@@ -753,7 +764,7 @@
       return go("A3");
     }
     // A5
-    if (a.id === "a5-skip") { SIM.mins = 26; ST.drove = true; stopSim(); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
+    if (a.id === "a5-skip") { ST.drove = true; stopSim(true); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
     // B3
     if (a.matches(".b3pt")) { ST.b3 = +a.dataset.seg; renderB3(); if (ST.b3 === 3) toast("이미 어려운 구간으로 표시한 곳이에요"); return; }
     if (a.matches(".pick")) { a.classList.toggle("on"); return; }
@@ -780,7 +791,7 @@
     }
     if (a.id === "f2-go") { const was = ST.profile; setProfile(F2.pick); if (ST.profile !== was) toast(`${ST.profile} 님 프로필로 바꿨어요`); return go("A1"); }
     // F4
-    if ((a.matches(".tgl[data-key]") || a.closest("#f4-freq")) && moving()) return toast("주행 중에는 바꿀 수 없어요 · 정차한 뒤 바꿔요");
+    if ((a.matches(".tgl[data-key]") || a.closest("#f4-freq")) && !parked()) return toast(moving() ? "주행 중에는 바꿀 수 없어요 · 주차(P)한 뒤 바꿔요" : "기어를 P로 바꾼 뒤 바꿀 수 있어요");
     if (a.matches(".tgl[data-key]")) {
       const k = a.dataset.key;
       if (k === "rec") { ST.rec = !ST.rec; toast(ST.rec ? "주행 기록 수집을 다시 켰어요" : "새 주행 기록을 모으지 않아요 · 코칭은 따로 동작해요"); }

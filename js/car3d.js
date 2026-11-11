@@ -138,10 +138,16 @@ export function initCar(getState) {
   }
 
   /* ---------- camera rigs ---------- */
-  const PARK = { pos: new THREE.Vector3(8.2, 5.0, 7.6), at: new THREE.Vector3(0, 0.45, 0) };   // 앞쪽 3/4
-  const DRIVE = { pos: new THREE.Vector3(-10.5, 4.4, 0.0), at: new THREE.Vector3(2.0, 0.5, 0) }; // 뒤에서 따라가기
-  const camPos = PARK.pos.clone(), camAt = PARK.at.clone();
-  camera.position.copy(camPos); camera.lookAt(camAt);
+  // az: angle around the car seen from above (0 = in front, π = behind), r: distance, h: height.
+  // The camera orbits between rigs instead of moving in a straight line through the car.
+  const PARK = { az: 0.75, r: 11.2, h: 5.0, at: new THREE.Vector3(0, 0.45, 0) };    // 앞쪽 3/4 (운전석 쪽)
+  const DRIVE = { az: Math.PI, r: 10.5, h: 4.4, at: new THREE.Vector3(2.0, 0.5, 0) }; // 뒤에서 따라가기
+  const cam = { az: PARK.az, r: PARK.r, h: PARK.h, at: PARK.at.clone() };
+  const placeCamera = () => {
+    camera.position.set(Math.cos(cam.az) * cam.r, cam.h, Math.sin(cam.az) * cam.r);
+    camera.lookAt(cam.at);
+  };
+  placeCamera();
 
   /* ---------- loop ---------- */
   let raf = 0, last = 0, blink = 0, roll = 0;
@@ -155,8 +161,10 @@ export function initCar(getState) {
 
     // camera: parked → front 3/4, in gear and rolling → chase view
     const rig = (st.gear === "D" || st.gear === "R") && st.speed > 0.5 ? DRIVE : PARK;
-    camPos.lerp(rig.pos, Math.min(1, dt * 1.6)); camAt.lerp(rig.at, Math.min(1, dt * 1.6));
-    camera.position.copy(camPos); camera.lookAt(camAt);
+    const k = dt * 1.6;
+    cam.az = ease(cam.az, rig.az, k); cam.r = ease(cam.r, rig.r, k); cam.h = ease(cam.h, rig.h, k);
+    cam.at.lerp(rig.at, Math.min(1, k));
+    placeCamera();
 
     // road moves under the car; wheels turn (slowed down so the spokes stay readable)
     roll = (roll + v * dt) % 3.2;
