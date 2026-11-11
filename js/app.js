@@ -377,9 +377,8 @@
     }
   }
   const limitAt = (km) => { let l = 50; for (const [k, v] of D.limits) if (km >= k) l = v; return l; };
-  /* 방향지시등: 회전 250m 전부터 회전 직후까지 켜요 (시뮬레이션) */
-  const TURN = { tr: "R", tl: "L", ut: "L", rb: "R" };
-  const turnAt = (km) => { const s = D.segs.find(x => TURN[x.ic] && km > x.km - 0.25 && km < x.km + 0.03); return s ? TURN[s.ic] : null; };
+  /* 방향지시등: D.signals 표를 따라요 (도로교통법 기준 · 시뮬레이션) */
+  const turnAt = (km) => { const s = D.signals.find(([a, b]) => km >= a && km < b); return s ? s[2] : null; };
   const NAVTXT = { 1: "단지 앞 큰길로 우회전", 2: "어린이 보호구역 진입", 3: "시청 사거리에서 좌회전", 4: "회전교차로 첫 번째 출구", 5: "도시고속도로 진입", 6: "회사 앞에서 유턴", 7: "좌회전 후 목적지" };
   const SIM = { run: false, paused: false, km: 0, spd: 0, raf: 0, last: 0, fired: new Set(), cam: { x: 120, y: 520 }, head: 0, finished: false, idleT: 0, braking: false };
   const SIM_ACC = 5.5, SIM_DEC = 8, K_SLOW = 4, K_FAST = 24;
