@@ -4,7 +4,7 @@
 
    initCar(getState) → { el, mount(parent), dispose() }
      getState() returns { gear, speed, braking, turn: null|"L"|"R"|"H", doors: { fl, fr, rl, rr, trunk } }
-   Coordinates: metres, the car faces +x, left side (운전석) is +z. */
+   Coordinates: metres, the car faces +x with +y up, so its left side (운전석) is -z and its right side is +z. */
 import * as THREE from "../vendor/three.module.min.js";
 
 const W = 340, H = 270;
@@ -106,9 +106,9 @@ export function initCar(getState) {
 
   // doors: body-coloured panels hinged at their front edge
   const doors = {};
-  const doorDef = { fl: [0.12, 1.18, 1], fr: [0.12, 1.18, -1], rl: [-1.02, 0.10, 1], rr: [-1.02, 0.10, -1] };
+  const doorDef = { fl: [0.12, 1.18, -1], fr: [0.12, 1.18, 1], rl: [-1.02, 0.10, -1], rr: [-1.02, 0.10, 1] }; // side: -1 left, +1 right
   for (const [k, [x0, x1, side]] of Object.entries(doorDef)) {
-    const hinge = new THREE.Group(); hinge.position.set(x1, 0, side * 0.915); // body side surface ≈ ±0.90 car.add(hinge);
+    const hinge = new THREE.Group(); hinge.position.set(x1, 0, side * 0.915); car.add(hinge); // body side surface ≈ ±0.90
     const panel = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.50, 0.035), paint);
     panel.position.set(-(x1 - x0) / 2, 0.66, 0); hinge.add(panel);
     const seam = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0 + 0.01, 0.51, 0.03), trim);
@@ -132,7 +132,7 @@ export function initCar(getState) {
   for (const [x, y] of [[2.51, 0.66], [-2.53, 0.78]]) {
     for (const zs of [1, -1]) {
       const m = lamp(0xFFA21A, 0.07, 0.05, 0.16); m.position.set(x, y, zs * 0.74); car.add(m);
-      (zs > 0 ? turnL : turnR).push(m);
+      (zs < 0 ? turnL : turnR).push(m); // -z = left
     }
   }
   const grille = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 1.2), trim); grille.position.set(2.56, 0.48, 0); car.add(grille);
@@ -155,12 +155,12 @@ export function initCar(getState) {
     }
   }
 
-  /* neighbours: light cars in the stalls on the passenger side (-z). The driver side stays empty
+  /* neighbours: light cars in the stalls on the passenger side (+z). The driver side stays empty
      so the camera (front-left) and the opening driver door are never blocked. */
   const ghostBody = new THREE.MeshStandardMaterial({ color: 0xF3F5F8, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0 });
   const ghostGlass = new THREE.MeshStandardMaterial({ color: 0xCFD5DD, roughness: 0.3, transparent: true, opacity: 0 });
   const ghostTire = new THREE.MeshStandardMaterial({ color: 0x9AA1AB, roughness: 0.9, transparent: true, opacity: 0 });
-  for (const z of [-STALL, -2 * STALL]) {
+  for (const z of [STALL, 2 * STALL]) {
     const n = new THREE.Group(); n.position.z = z;
     n.add(new THREE.Mesh(body.geometry, ghostBody), new THREE.Mesh(cabin.geometry, ghostGlass));
     for (const x of [WB, -WB]) for (const zs of [1, -1]) {
@@ -172,8 +172,8 @@ export function initCar(getState) {
   /* ---------- camera rigs ---------- */
   // az: angle around the car seen from above (0 = in front, π = behind), r: distance, h: height.
   // The camera orbits between rigs instead of moving in a straight line through the car.
-  const PARK = { az: 0.75, r: 11.2, h: 5.0, at: new THREE.Vector3(0, 0.45, 0) };    // 앞쪽 3/4 (운전석 쪽)
-  const DRIVE = { az: Math.PI, r: 10.5, h: 4.4, at: new THREE.Vector3(2.0, 0.5, 0) }; // 뒤에서 따라가기
+  const PARK = { az: -0.75, r: 11.2, h: 5.0, at: new THREE.Vector3(0, 0.45, 0) };   // 앞쪽 3/4, 운전석(왼쪽 · -z) 쪽
+  const DRIVE = { az: -Math.PI, r: 10.5, h: 4.4, at: new THREE.Vector3(2.0, 0.5, 0) }; // 뒤에서 따라가기 (운전석 쪽으로 돌아요)
   const cam = { az: PARK.az, r: PARK.r, h: PARK.h, at: PARK.at.clone() };
   const placeCamera = () => {
     camera.position.set(Math.cos(cam.az) * cam.r, cam.h, Math.sin(cam.az) * cam.r);
