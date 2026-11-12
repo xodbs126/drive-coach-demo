@@ -182,3 +182,22 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .sp-foot{position:absolute;bottom:22px;font-size:11px;color:#8A919B;opacity:0}
 #splash.on .sp-foot{animation:spUp .4s .9s ease-out both}
 .l0-car img{-webkit-mask-image:radial-gradient(ellipse 58% 62% at 50% 55%,#000 70%,transparent 100%);mask-image:radial-gradient(ellipse 58% 62% at 50% 55%,#000 70%,transparent 100%)}
+/* A1 home: search, other destination, route stats, last drive, buttons */
+.a1-srch{margin-left:auto;display:flex;align-items:center;gap:8px;width:300px;height:44px;box-sizing:border-box;padding:0 18px;border-radius:22px;background:#fff;border:1px solid #E6E6E9;color:#646B76;font-size:15px}
+.a1-dest{margin-left:auto;display:flex;align-items:center;gap:6px;height:38px;padding:0 16px;border-radius:19px;background:#E3F1FC;border:1px solid #B9DDF7;color:#0B2A5B;font-size:14px;font-weight:700}
+.a1-stat{margin-top:14px;gap:0;color:#0B2A5B}
+.a1-stat>div{flex:1;font-size:14px;font-weight:600;color:#646B76}
+.a1-stat>div:not(:first-child){padding-left:16px}
+.a1-stat b{font-size:28px;font-weight:700;color:#0B2A5B;margin-right:3px;letter-spacing:-0.02em}
+.a1-stat>i{width:1px;height:26px;background:#E6E6E9}
+.a1-last{display:block;margin-top:18px}
+.a1-pen{flex:1;min-width:0;height:66px;box-sizing:border-box;padding:9px 10px;border-radius:12px;background:#F7F8FA;display:flex;flex-direction:column;justify-content:space-between;font-size:13px;font-weight:600;color:#33383F}
+.a1-pen b{font-size:20px;font-weight:700;color:#0B2A5B}
+.a1-pen .num span{margin-left:2px;font-size:13px;font-weight:500;color:#646B76}
+.a1-last:hover .a1-pen{background:#F1F3F6}
+.a1-cta{flex:1;height:60px;box-sizing:border-box;border-radius:12px;border:1px solid #DCE3EE;background:#fff;color:#0B2A5B;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:700;box-shadow:0 2px 10px rgba(11,42,91,.08)}
+.a1-cta.pri{flex:1.5;background:#0B2A5B;border-color:#0B2A5B;color:#fff}
+.a1-cta:hover{background:#F2F6FC}
+.a1-cta.pri:hover{background:#13366F}
+.a1-srch:hover{border-color:#1A9BE8}
+.a1-dest:hover{background:#D3E9FA}

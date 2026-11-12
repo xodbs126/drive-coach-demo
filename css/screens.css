@@ -74,6 +74,7 @@ body{margin:0;background:#F2F2F2}
 .prog-seg{display:flex;gap:3px;height:6px}
 .prog-seg>i{flex:1;border-radius:3px;background:#ECECEF}
 .prog-seg>i.on{background:#1FB83A}
+.prog-seg.sky>i.on{background:#1A9BE8}
 .seg{display:flex;gap:4px}
 .seg>i{flex:1;height:5px;border-radius:3px;background:#E6E6EA}
 .seg>i.g{background:#1FB83A}.seg>i.b{background:#1F6FE0}
