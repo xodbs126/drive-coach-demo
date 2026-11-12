@@ -182,7 +182,7 @@ export function initCar(getState) {
   placeCamera();
 
   /* ---------- loop ---------- */
-  let raf = 0, last = 0, blink = 0, roll = 0, parkedK = 1; // parkedK: 1 = parking lot shown (starts in P)
+  let raf = 0, last = 0, blink = 0, roll = 0, parkedK = 1, lastTurn = null; // parkedK: 1 = parking lot shown (starts in P)
   const ease = (cur, to, k) => cur + (to - cur) * Math.min(1, k);
   function frame(t) {
     raf = requestAnimationFrame(frame);
@@ -217,6 +217,7 @@ export function initCar(getState) {
     trunk.rotation.z = -trunkS.a * 1.15;
 
     // lamps
+    if (st.turn !== lastTurn) { lastTurn = st.turn; blink = 0; } // a new signal lights at once, like a real car
     blink = (blink + dt) % 0.8;
     const on = blink < 0.42;
     front.material.emissiveIntensity = 2.2;
