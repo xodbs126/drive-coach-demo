@@ -196,7 +196,7 @@
   addEventListener("resize", fit); fit();
 
   /* ------------------------------------------------------------ speech (TTS) */
-  const TTS = { q: [], busy: false, voices: [], cur: null, gen: 0 }; // gen: bumped by hush() so late callbacks of cancelled lines are ignored
+  const TTS = { q: [], busy: false, voices: [], cur: null, job: null, next: 0, paused: false };
   const hasTTS = "speechSynthesis" in window;
   // Rank Korean voices so the softest, most natural female voice comes first:
   // Edge "SunHi Online (Natural)" > other Natural/online voices (Chrome "Google 한국의") > OS voices (Heami).
@@ -220,36 +220,109 @@
     return voiceScore(v[1]) >= 50 ? v[1] : v[0];
   }
 
-  /* item: {text, kind:'nav'|'coach'|'review'|'ui', onstart, onend, stale()} */
+  /* item: {text, kind:'nav'|'coach'|'review'|'ui', onstate(audible, paused), onend(reason), stale()} */
+  const speechPriority = item => ({ nav: 3, coach: 2, ui: 2, review: 1 }[item.kind] || 0);
+  function queueSpeech(item, first = false) {
+    const i = TTS.q.findIndex(q => first ? speechPriority(q) <= speechPriority(item) : speechPriority(q) < speechPriority(item));
+    if (i < 0) TTS.q.push(item); else TTS.q.splice(i, 0, item);
+  }
   function speak(item) {
-    if (item.kind === "nav") {
-      const i = TTS.q.findIndex(q => q.kind !== "nav"); // nav voice always goes first
-      if (i < 0) TTS.q.push(item); else TTS.q.splice(i, 0, item);
-    } else TTS.q.push(item);
+    queueSpeech(item);
+    if (TTS.cur && speechPriority(item) > speechPriority(TTS.cur)) {
+      const interrupted = stopSpeech("interrupt");
+      if (interrupted) queueSpeech(interrupted, true); // restart only if still useful when dequeued
+    }
     pump();
   }
+  function speechState(job) {
+    if (TTS.job === job && job.started) job.item.onstate && job.item.onstate(job.audio, TTS.paused);
+  }
+  function armSpeech(job, ms, callback) {
+    clearTimeout(job.timer);
+    job.remaining = ms; job.callback = callback; job.due = performance.now() + ms;
+    if (!TTS.paused) job.timer = setTimeout(() => { if (TTS.job === job) callback(); }, ms);
+  }
+  function stopSpeech(reason, cancel = true) {
+    const job = TTS.job;
+    if (!job) return null;
+    // Invalidate before cancel(): browsers may emit cancellation callbacks synchronously or later.
+    TTS.job = null; TTS.busy = false; TTS.cur = null;
+    clearTimeout(job.timer);
+    if (cancel && job.audio && hasTTS) speechSynthesis.cancel();
+    job.item.onend && job.item.onend(reason);
+    return job.item;
+  }
   function pump() {
-    if (TTS.busy) return;
+    if (TTS.busy || TTS.paused) return;
+    clearTimeout(TTS.next); TTS.next = 0;
     let item;
     while ((item = TTS.q.shift())) { if (!(item.stale && item.stale())) break; }
     if (!item) return;
     TTS.busy = true; TTS.cur = item;
-    item.onstart && item.onstart();
-    let ended = false;
-    const gen = TTS.gen, est = 500 + item.text.length * 85;
-    const done = () => { if (ended) return; ended = true; if (gen !== TTS.gen) return; TTS.busy = false; TTS.cur = null; item.onend && item.onend(); setTimeout(pump, 180); };
-    if (ST.voice && hasTTS) {
+    const job = TTS.job = { item, audio: ST.voice && hasTTS, started: false, timer: 0, pendingEnd: false };
+    const est = 500 + item.text.length * 85;
+    const done = () => {
+      if (TTS.job !== job) return;
+      if (TTS.paused) { job.pendingEnd = true; return; }
+      stopSpeech("end", false);
+      TTS.next = setTimeout(pump, 180);
+    };
+    job.done = done;
+    if (job.audio) {
       const u = new SpeechSynthesisUtterance(item.text);
       u.lang = "ko-KR";
       const v = pickVoice(item.kind === "nav" ? "nav" : "coach");
       if (v) u.voice = v;
       u.rate = item.kind === "nav" ? 1.03 : 1.0; u.pitch = 1.0;
+      u.onstart = () => { if (TTS.job === job) { job.started = true; speechState(job); } };
       u.onend = done; u.onerror = done;
+      // Missing onend must not stall the drive, but a long or pending utterance must finish first.
+      const watch = () => {
+        if (speechSynthesis.speaking || speechSynthesis.pending) armSpeech(job, 500, watch);
+        else done();
+      };
+      armSpeech(job, est * 1.4 + 1500, watch);
       speechSynthesis.speak(u);
-      setTimeout(done, est * 1.4 + 1500); // Chrome sometimes drops onend
-    } else setTimeout(done, est);
+    } else {
+      job.started = true; speechState(job);
+      armSpeech(job, est, done); // caption-only playback uses the same queue and pause clock
+    }
   }
-  function hush() { TTS.gen++; TTS.q = []; if (hasTTS) speechSynthesis.cancel(); TTS.busy = false; TTS.cur = null; }
+  function pauseSpeech(paused) {
+    TTS.paused = paused;
+    clearTimeout(TTS.next); TTS.next = 0;
+    const job = TTS.job;
+    if (paused && job) {
+      job.remaining = Math.max(0, job.due - performance.now()); clearTimeout(job.timer);
+    }
+    if (hasTTS) paused ? speechSynthesis.pause() : speechSynthesis.resume();
+    if (job) {
+      speechState(job);
+      if (!paused) {
+        if (job.pendingEnd) job.done();
+        else armSpeech(job, job.remaining, job.callback);
+      }
+    } else if (!paused) pump();
+  }
+  function pruneSpeech() {
+    TTS.q = TTS.q.filter(item => !(item.stale && item.stale()));
+    if (TTS.cur && TTS.cur.stale && TTS.cur.stale()) stopSpeech("cancel");
+    pump();
+  }
+  function setSpeechVoice(enabled) {
+    ST.voice = enabled;
+    if (!enabled && TTS.job && TTS.job.audio) {
+      const item = stopSpeech("cancel");
+      if (item) queueSpeech(item, true);
+      pump();
+    }
+  }
+  function hush() {
+    clearTimeout(TTS.next); TTS.next = 0; TTS.q = [];
+    stopSpeech("cancel"); TTS.paused = false;
+    if (hasTTS) { speechSynthesis.cancel(); speechSynthesis.resume(); }
+    resetSpeechUI();
+  }
   function sayUI(text) { hush(); speak({ text, kind: "ui" }); }
 
   /* ------------------------------------------------------------ router */
@@ -398,7 +471,7 @@
   /* 방향지시등: D.signals 표를 따라요 (도로교통법 기준 · 시뮬레이션) */
   const turnAt = (km) => { const s = D.signals.find(([a, b]) => km >= a && km < b); return s ? s[2] : null; };
   const NAVTXT = { 1: "단지 앞 큰길로 우회전", 2: "어린이 보호구역 진입", 3: "시청 사거리에서 좌회전", 4: "회전교차로 첫 번째 출구", 5: "도시고속도로 진입", 6: "회사 앞에서 유턴", 7: "좌회전 후 목적지" };
-  const SIM = { run: false, paused: false, km: 0, spd: 0, raf: 0, last: 0, fired: new Set(), cam: { x: 120, y: 520 }, head: 0, finished: false, idleT: 0, braking: false };
+  const SIM = { run: false, paused: false, km: 0, spd: 0, raf: 0, last: 0, fired: new Set(), cam: { x: 120, y: 520 }, head: 0, finished: false, idleT: 0, navT: 0, startT: 0, finishT: 0, braking: false };
   const SIM_ACC = 5.5, SIM_DEC = 8, K_SLOW = 4, K_FAST = 24;
   const BRAKE_K = 2 * SIM_DEC * 0.8 * 3600 / K_SLOW; // (km/h)² per km of braking room, with a margin
   /* speed allowed now: the planned speed here, or lower if a slower point ahead needs braking already */
@@ -418,12 +491,13 @@
     $("#a5-eta").textContent = hm24(new Date(SIM.t0 + 26 * 60000)); // 도착 예정: 출발 + 26분
     coachIdle(); $("#a5-navsub").classList.remove("on"); $("#a5-navspk").classList.remove("on");
     updateA5(0);
-    setTimeout(() => { if (SIM.run && cur === "A5") { SIM.raf = requestAnimationFrame(tick); } }, 700);
+    SIM.startT = setTimeout(() => { if (SIM.run && cur === "A5") { SIM.raf = requestAnimationFrame(tick); } }, 700);
   }
   /* ends the simulated drive. arrive: [도착으로 건너뛰기] — count the whole route.
      Leaving A5 (arrived, skipped or in the middle) ends the drive: the car stands still in P. */
   function stopSim(arrive) {
     const active = !!SIM.t0;
+    clearTimeout(SIM.startT); clearTimeout(SIM.finishT);
     SIM.run = false; cancelAnimationFrame(SIM.raf);
     if (!active) return;
     if (arrive) { SIM.finished = true; SIM.km = 12.4; SIM.mins = 26; }
@@ -460,40 +534,67 @@
       if (ev.kind === "review" && !(ST.learned[ev.feature] && ST.rev[ev.feature])) return;
       speak({
         text: ev.text, kind: ev.kind,
-        stale: ev.ttl ? () => SIM.km > ev.ttl : null,
-        onstart: () => ev.kind === "nav" ? navOn(ev.text) : coachOn(ev),
-        onend: () => ev.kind === "nav" ? navOff() : coachOff(),
+        stale: () => (ev.ttl && SIM.km > ev.ttl)
+          || (ev.kind === "coach" && (!ST.coach || ev.lvl > ST.freq))
+          || (ev.kind === "review" && !(ST.learned[ev.feature] && ST.rev[ev.feature])),
+        onstate: (audible, paused) => ev.kind === "nav" ? navOn(ev.text, audible, paused) : coachOn(ev, audible, paused),
+        onend: reason => ev.kind === "nav" ? navOff(reason) : coachOff(reason),
       });
     });
   }
-  function navOn(text) { $("#a5-navsub").innerHTML = icon("vol", 14, "#fff") + " " + text; $("#a5-navsub").classList.add("on"); $("#a5-navspk").classList.add("on"); }
-  function navOff() { setTimeout(() => { $("#a5-navsub").classList.remove("on"); }, 700); $("#a5-navspk").classList.remove("on"); }
+  function navOn(text, audible, paused) {
+    clearTimeout(SIM.navT);
+    coachIdle(); // a previous coaching caption must not compete with navigation
+    $("#a5-navsub").innerHTML = (audible && !paused ? icon("vol", 14, "#fff") + " " : "") + (paused ? "일시정지 · " : audible ? "" : "자막 · ") + text;
+    $("#a5-navsub").classList.add("on");
+    $("#a5-navspk").classList.toggle("on", audible && !paused);
+  }
+  function navOff(reason) {
+    clearTimeout(SIM.navT);
+    $("#a5-navspk").classList.remove("on");
+    const hide = () => { $("#a5-navsub").classList.remove("on"); $("#a5-navsub").textContent = ""; };
+    if (reason === "end") SIM.navT = setTimeout(hide, 700);
+    else hide();
+  }
+  function resetSpeechUI() {
+    clearTimeout(SIM.navT); clearTimeout(SIM.idleT);
+    if (!$("#a5-coach")) return;
+    navOff("cancel"); coachIdle();
+  }
   function coachIdle() {
+    clearTimeout(SIM.idleT);
     const c = $("#a5-coach"); c.className = "row coachbar idle";
     $("#a5-coach-tag").textContent = ST.coach ? "Drive Coach 코칭 · 내비 음성이 끝난 뒤" : "운전 코칭 꺼짐 · 주행 기록은 계속돼요";
     $("#a5-coach-text").textContent = ST.coach ? "코칭 대기 중 · 내비 안내가 먼저예요" : "설정에서 코칭을 다시 켤 수 있어요";
+    $("#a5-coach-ic").innerHTML = icon("vol", 22, "#fff");
   }
-  function coachOn(ev) {
+  function coachOn(ev, audible, paused) {
     clearTimeout(SIM.idleT);
+    navOff("cancel");
     const c = $("#a5-coach");
-    c.className = "row coachbar talk" + (ev.kind === "review" ? " review" : "");
-    $("#a5-coach-tag").textContent = ev.kind === "review" ? "내 차 기능 복습 · 스마트 크루즈 컨트롤 · 동의한 기능만" : "Drive Coach 코칭 · 내비 음성이 끝난 뒤";
-    $("#a5-coach-ic").innerHTML = icon(ev.kind === "review" ? "wheel" : "vol", 22, "#fff");
+    c.className = "row coachbar" + (audible && !paused ? " talk" : "") + (ev.kind === "review" ? " review" : "");
+    const tag = ev.kind === "review" ? `내 차 기능 복습 · ${D.features[ev.feature].name}` : "Drive Coach 코칭";
+    $("#a5-coach-tag").textContent = tag + (paused ? " · 일시정지" : audible ? " · " + (ev.kind === "review" ? "동의한 기능만" : "내비 음성이 끝난 뒤") : " · 자막 안내");
+    $("#a5-coach-ic").innerHTML = icon(ev.kind === "review" ? "wheel" : audible ? "vol" : "car", 22, "#fff");
     $("#a5-coach-text").textContent = "“" + ev.text + "”";
   }
-  function coachOff() {
+  function coachOff(reason) {
+    if (reason !== "end") { coachIdle(); return; }
     $("#a5-coach").classList.remove("talk");
-    SIM.idleT = setTimeout(() => { if (cur === "A5" && !(TTS.cur && TTS.cur.kind !== "nav")) { coachIdle(); $("#a5-coach-ic").innerHTML = icon("vol", 22, "#fff"); } }, 3500);
+    SIM.idleT = setTimeout(() => { if (cur === "A5" && !(TTS.cur && TTS.cur.kind !== "nav")) coachIdle(); }, 3500);
   }
   function finish() {
     SIM.finished = true; SIM.spd = 0; ST.drove = true;
     const mt = missionDone("drive");
     const wait = () => {
       if (!SIM.run) return;
-      if (TTS.busy || TTS.q.length) return setTimeout(wait, 300);
-      setTimeout(() => { if (cur === "A5") { toast(mt ? `도착 · ${mt}` : "도착 · 주행 기록을 자동 저장했어요"); go("B1"); } }, 900);
+      if (SIM.paused || TTS.busy || TTS.q.length) { SIM.finishT = setTimeout(wait, 300); return; }
+      SIM.finishT = setTimeout(() => {
+        if (SIM.paused) { wait(); return; }
+        if (SIM.run && cur === "A5") { toast(mt ? `도착 · ${mt}` : "도착 · 주행 기록을 자동 저장했어요"); go("B1"); }
+      }, 900);
     };
-    setTimeout(wait, 600);
+    SIM.finishT = setTimeout(wait, 600);
   }
   function updateA5(rdt) {
     const u = kmToU(SIM.km), p = posAtU(u);
@@ -958,11 +1059,11 @@
     syncPanel();
   });
   P.addEventListener("change", (e) => {
-    if (e.target.id === "p-voice") { ST.voice = e.target.checked; if (!ST.voice) hush(); }
-    if (e.target.id === "p-coach") { ST.coach = e.target.checked; if (cur === "A5") coachIdle(); }
+    if (e.target.id === "p-voice") setSpeechVoice(e.target.checked);
+    if (e.target.id === "p-coach") { ST.coach = e.target.checked; pruneSpeech(); if (cur === "A5" && (!TTS.cur || TTS.cur.kind === "nav")) coachIdle(); }
     if (e.target.id === "p-nav-voice") { ST.navVoice = e.target.value; previewVoice("nav"); }
     if (e.target.id === "p-coach-voice") { ST.coachVoice = e.target.value; previewVoice("coach"); }
-    if (e.target.id === "p-scc") { ST.learned.scc = e.target.checked || ST.learned.scc; ST.rev.scc = e.target.checked; syncLearn(); }
+    if (e.target.id === "p-scc") { ST.learned.scc = e.target.checked || ST.learned.scc; ST.rev.scc = e.target.checked; pruneSpeech(); syncLearn(); }
   });
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("textarea,input")) return;
@@ -972,7 +1073,7 @@
     if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.target.matches("select")) { e.preventDefault(); if (!e.repeat) setPedal(e.key === "ArrowUp" ? "accel" : "brake"); return; }
     if (e.key === "`") { P.hidden = !P.hidden; syncPanel(); }
     else if (e.key === "Escape") P.hidden = true;
-    else if (e.key === " " && cur === "A5") { e.preventDefault(); SIM.paused = !SIM.paused; if (hasTTS) SIM.paused ? speechSynthesis.pause() : speechSynthesis.resume(); toast(SIM.paused ? "일시정지" : "재생", 900); }
+    else if (e.key === " " && cur === "A5") { e.preventDefault(); SIM.paused = !SIM.paused; pauseSpeech(SIM.paused); toast(SIM.paused ? "일시정지" : "재생", 900); }
     else if (e.key === "f" || e.key === "F") { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(() => {}); }
     else if (e.key === "r" || e.key === "R") { const c = cur; leave(c); cur = null; show(); }
   });
