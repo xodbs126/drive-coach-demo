@@ -39,6 +39,15 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 #a5-map{transition:none}
 .a5-start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,246,247,.55);backdrop-filter:blur(2px)}
 
+/* ---------- B1: 감점 기록 ↔ 지도 위치 ---------- */
+.b1pen{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #F0F0F3;box-shadow:inset 3px 0 0 transparent;transition:background .2s,box-shadow .2s}
+.b1pen.on{background:#EEF4FE;box-shadow:inset 3px 0 0 #1F6FE0}
+.b1pen-ic{flex:none;width:32px;height:32px;border-radius:50%;background:#F2F3F5;display:flex;align-items:center;justify-content:center}
+.b1pen-t{display:block;font-size:14px;font-weight:600;margin-bottom:1px}
+.b1mk{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#D61F22;border:3px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s,background .2s,box-shadow .2s}
+.b1mk::before{content:"";position:absolute;inset:-14px;border-radius:50%}
+.b1mk.on{z-index:2;transform:scale(1.3);background:#1F6FE0;box-shadow:0 0 0 6px rgba(31,111,224,.22),0 1px 3px rgba(0,0,0,.3)}
+
 /* ---------- B3 ---------- */
 .b3pt{position:absolute;width:40px;height:40px;border-radius:50%;border:2px dashed transparent;background:transparent;padding:0}
 .b3pt:hover{border-color:#1F6FE0;background:rgba(31,111,224,.08)}
@@ -80,7 +89,7 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .d4msg.ok{display:block;background:#E6F6EA;color:#1A7F33}
 .d4msg.warn{display:block;background:#FFF4E5;color:#8A5300}
 
-/* ---------- B1~B4 · E2 · E3: 기록이 없는 프로필 ---------- */
+/* ---------- B1 · B3 · B4 · E2 · E3: 기록이 없는 프로필 ---------- */
 /* ---------- cluster: 3D car (js/car3d.js) · limit sign ---------- */
 .cl-car3d{position:absolute;left:10px;top:176px;width:340px;height:270px;border-radius:12px}
 #stage.car3d-on .cl-cars{display:none}

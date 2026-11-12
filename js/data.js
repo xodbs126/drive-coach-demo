@@ -84,6 +84,12 @@ window.D = {
 
   brief: "어제 어렵다고 표시한 시청 사거리 좌회전이 있어요. 출발 전에 리허설로 살펴보세요.",
 
+  /* B1 today's deductions (11/9). seg = D.segs number, mk = marker spot on the B1 map card (px) */
+  pens: [
+    { seg: 2, t: "제한속도 초과", at: "어린이 보호구역", mk: [162, 385] },
+    { seg: 5, t: "급가속", at: "고속도로 진입로", mk: [66, 182] },
+    { seg: 6, t: "급감속", at: "회사 앞 유턴", mk: [70, 27] },
+  ],
   /* B3 point details */
   b3: {
     1: ["08:06", "단지 앞 큰길 우회전 · 출발 0.4km", "이 지점은 감점 기록이 없어요"],
@@ -185,7 +191,7 @@ window.D = {
   },
 
   /* driver profiles. 지민 keeps the text written in the screen files.
-     records: false → report screens (B1~B4, E2, E3) show an empty state.
+     records: false → report screens (B1, B3, B4, E2, E3) show an empty state.
      t: text for [data-pf] elements. stage: feature learning stage (0~3) */
   profiles: {
     지민: { av: "지", records: true, prog: "commute", seg: 3, checked: [1, 2], learned: { wiper: true }, rev: { wiper: true } },
