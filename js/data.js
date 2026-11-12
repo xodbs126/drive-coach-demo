@@ -194,7 +194,7 @@ window.D = {
      records: false → report screens (B1, B3, B4, E2, E3) show an empty state.
      t: text for [data-pf] elements. stage: feature learning stage (0~3) */
   profiles: {
-    지민: { av: "지", records: true, prog: "commute", seg: 3, checked: [1, 2], learned: { wiper: true }, rev: { wiper: true } },
+    지민: { av: "지", records: true, prog: "commute", seg: 1, checked: [], learned: { wiper: true }, rev: { wiper: true } },
     민수: { av: "민", records: false, prog: "return", seg: 1, checked: [], learned: {}, rev: {},
       stage: { scc: 1, lka: 1, wiper: 1, autohold: 1, defog: 1 },
       missions: { return: ["done", "go"] }, badge: { return: "진행 중 · 1/6" },
