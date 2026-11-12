@@ -428,7 +428,8 @@
       const tgt = wantSpeed(SIM.km), diff = tgt - SIM.spd;
       SIM.spd += Math.max(-SIM_DEC * dt, Math.min(SIM_ACC * dt, diff));
       SIM.braking = diff < -0.5;
-      const K = talking || Math.abs(tgt - SIM.spd) > 1.5 ? K_SLOW : K_FAST;
+      // also slow while an indicator is on, so it blinks a few times before the car turns
+      const K = talking || turnAt(SIM.km) || Math.abs(tgt - SIM.spd) > 1.5 ? K_SLOW : K_FAST;
       SIM.km = Math.min(12.4, SIM.km + Math.max(SIM.spd, 6) / 3600 * dt * K);
       fireScript();
       if (SIM.km >= 12.4) finish();
