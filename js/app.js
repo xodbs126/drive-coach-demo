@@ -14,14 +14,14 @@
   /* ------------------------------------------------------------ driver profiles
      Each driver keeps their own progress and settings (PER). Switching stores the current
      driver's values and loads the other driver's. D.profiles holds the starting values. */
-  const PER = ["learned", "rev", "checked", "prog", "seg", "b4", "rec", "coach", "freq", "stage", "drove"];
+  const PER = ["learned", "rev", "checked", "prog", "seg", "b4", "rec", "coach", "freq", "stage", "drove", "missions", "mission"];
   const PSTORE = {};
   const prof = () => D.profiles[ST.profile];
   function freshProfile(name) {
     const p = D.profiles[name];
     return {
       learned: { ...p.learned }, rev: { ...p.rev }, checked: new Set(p.checked), prog: p.prog, seg: p.seg, b4: null,
-      rec: true, coach: true, freq: 2, drove: false,
+      rec: true, coach: true, freq: 2, drove: false, missions: {}, mission: null,
       stage: p.stage ? { ...p.stage } : Object.fromEntries(Object.entries(D.features).map(([k, f]) => [k, parseInt(f.prog, 10) || 0])),
     };
   }
@@ -284,7 +284,7 @@
   function renderA1() {
     $("#a1-segs").textContent = `주요 구간 7곳 · ${ST.checked.size}곳 확인` + (prof().records ? " · 어려운 구간 1곳" : "");
     const p = D.progs.find(q => q.key === prof().prog);
-    if (p) $("#a1-prog").style.width = `${doneOf(p) / p.missions.length * 100}%`;
+    if (p) { $("#a1-prog").style.width = `${doneOf(p) / p.missions.length * 100}%`; $("#a1-progs").textContent = `미션 ${doneOf(p)}/${p.missions.length}`; }
     $("#a1-learn").style.width = `${stageOf("scc") / 3 * 100}%`;
   }
   /* B1, B3, B4, E2, E3 for a driver without records: cover the screen with an empty state */
@@ -471,10 +471,11 @@
   }
   function finish() {
     SIM.finished = true; SIM.spd = 0; ST.drove = true;
+    const mt = missionDone("drive");
     const wait = () => {
       if (!SIM.run) return;
       if (TTS.busy || TTS.q.length) return setTimeout(wait, 300);
-      setTimeout(() => { if (cur === "A5") { toast("도착 · 주행 기록을 자동 저장했어요"); go("B1"); } }, 900);
+      setTimeout(() => { if (cur === "A5") { toast(mt ? `도착 · ${mt}` : "도착 · 주행 기록을 자동 저장했어요"); go("B1"); } }, 900);
     };
     setTimeout(wait, 600);
   }
@@ -567,13 +568,25 @@
   }
 
   /* ------------------------------------------------------------ C2 */
-  /* mission state for the current driver: D.progs holds 지민's, D.profiles[x].missions overrides it */
+  /* ST.missions[prog][i]: times the mission's activity was finished. ST.mission: "prog:i" started with [시작] */
+  const needOf = (m) => m[6] || 1;
+  const countOf = (p, i) => (ST.missions[p.key] || [])[i] || 0;
   function missionState(p, m, i) {
-    const ms = prof().missions;
-    const st = ms ? ((ms[p.key] && ms[p.key][i]) || "todo") : m[3];
-    return m[5] === "scc" && ST.learned.scc ? "done" : st;
+    const c = countOf(p, i);
+    return c >= needOf(m) ? "done" : ST.mission === `${p.key}:${i}` ? "go" : c ? "prog" : "todo";
   }
   const doneOf = (p) => p.missions.filter((m, i) => missionState(p, m, i) === "done").length;
+  /* called when an activity ends (how: rh · drive · feat). Returns a toast text if the started mission moved on */
+  function missionDone(how) {
+    if (!ST.mission) return "";
+    const [k, i] = ST.mission.split(":"), m = D.progs.find(q => q.key === k).missions[i];
+    if (m[3] !== how || (how === "feat" && m[5] && m[5] !== ST.feature)) return "";
+    const a = ST.missions[k] || (ST.missions[k] = []);
+    a[i] = (a[i] || 0) + 1;
+    if (a[i] < needOf(m)) return `미션 진행 · ${m[0]} ${a[i]}/${needOf(m)}`;
+    ST.mission = null;
+    return `미션 완료 · ${m[0]}`;
+  }
   function renderC2() {
     $("#c2-progs").innerHTML = D.progs.map(p => {
       const done = doneOf(p);
@@ -581,24 +594,23 @@
       const on = p.key === ST.prog;
       return `<a href="#" data-prog="${p.key}" class="card" style="display:block;padding:13px 15px;border-radius:14px;${on ? "background:#EEF4FE;border-color:#B9D2F6;" : ""}">
 <div class="row"><span style="font-size:15px;font-weight:600">${p.title}</span><span class="xs" style="margin-left:auto">${st}</span></div>
-<div class="xs" style="margin-top:3px">${p.sub}</div><div class="prog" style="margin-top:10px"><i style="width:${done / p.missions.length * 100}%"></i></div></a>`;
+<div class="xs" style="margin-top:3px">${p.sub}</div><div class="prog-seg" style="margin-top:10px" aria-hidden="true">${p.missions.map((m, i) => `<i${missionState(p, m, i) === "done" ? ' class="on"' : ""}></i>`).join("")}</div></a>`;
     }).join("");
     const p = D.progs.find(q => q.key === ST.prog);
-    const done = doneOf(p), badge = (prof().badge && prof().badge[p.key]) || (done ? p.badge : "시작 전");
+    const done = doneOf(p), n = p.missions.length;
+    const badge = done === n ? "완료" : done || (ST.mission || "").startsWith(p.key + ":") ? "진행 중" : "시작 전";
     const rows = p.missions.map((m, i) => {
-      const [title, kind, tag, , href, feat] = m, st = missionState(p, m, i);
+      const [title, kind, tag, , href, feat] = m, st = missionState(p, m, i), c = countOf(p, i), need = needOf(m);
       const stH = st === "done" ? `<span class="row" style="gap:4px;font-size:13px;color:#1A7F33;font-weight:600">${icon("check", 16, "#1FB83A")}완료</span>`
-        : st === "prog" ? '<span style="font-size:13px;font-weight:600;color:#1A6FD0">진행 중 3/3</span>'
-        : `<a href="${href}" ${feat ? `data-feature="${feat}"` : ""} class="btn ${st === "go" ? "pri" : "sec"} sm" style="height:34px">${st === "go" && feat ? "이어서" : "시작"}</a>`;
+        : `<a href="${href}" data-mission="${p.key}:${i}" ${feat ? `data-feature="${feat}"` : ""} class="btn ${st === "go" ? "pri" : "sec"} sm" style="height:34px">${st === "todo" ? "시작" : "이어서"}</a>`;
       const tagH = tag === "rec" ? '<span class="chip blue">추천</span>' : '<span class="chip gray">기본</span>';
-      const kindH = `<span class="row xs" style="gap:4px">${icon(kind === "주행" ? "nav" : "lock", 12, "#646B76")}${kind}</span>`;
-      return `<div class="row" style="gap:12px;padding:0 16px;height:${p.missions.length > 5 ? 54 : 62}px;border-top:1px solid #F0F0F3;${st === "go" ? "background:#F7FAFF;" : ""}">
+      const kindH = `<span class="row xs" style="gap:4px">${icon(kind === "주행" ? "wheel" : "park", 14, "#646B76")}${kind}${need > 1 && st !== "done" ? ` · ${c}/${need}회` : ""}</span>`;
+      return `<div class="row" style="flex:1;min-height:54px;gap:12px;padding:0 16px;border-top:1px solid #F0F0F3;${st === "go" ? "background:#F7FAFF;" : ""}">
 <span class="num" style="width:22px;height:22px;border-radius:50%;background:${st === "done" ? "#1FB83A" : "#EFEFF2"};color:${st === "done" ? "#fff" : "#4B515A"};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">${i + 1}</span>
 <div style="flex:1"><div class="row" style="gap:6px"><span style="font-size:15px;font-weight:600">${title}</span>${tagH}</div><div style="margin-top:3px">${kindH}</div></div>${stH}</div>`;
     }).join("");
-    $("#c2-detail").innerHTML = `<div style="padding:16px 16px 12px"><div class="row"><span class="h2">${p.title}</span><span class="chip ${done ? "green" : "gray"}" style="margin-left:8px">${badge}</span><span class="sm num" style="margin-left:auto">${done} / ${p.missions.length} 완료</span></div>
-<div class="sm" style="margin-top:4px">${p.desc}</div></div>${rows}
-<div class="xs" style="margin-top:auto;padding:12px 16px;border-top:1px solid #F0F0F3;line-height:1.45">${p.note}</div>`;
+    $("#c2-detail").innerHTML = `<div style="padding:16px 16px 12px"><div class="row"><span class="h2">${p.title}</span><span class="chip ${done ? "green" : "gray"}" style="margin-left:8px">${badge}</span><span class="sm num" style="margin-left:auto">${done} / ${n} 완료</span></div>
+<div class="sm" style="margin-top:4px">${p.desc}</div></div>${rows}`;
   }
 
   /* ------------------------------------------------------------ D (features) */
@@ -701,6 +713,7 @@
       if (D4S.step >= f.seq.length) {
         ST.learned[ST.feature] = true; syncLearn();
         sayUI(`${f.name} 학습을 완료했어요.`);
+        const mt = missionDone("feat"); if (mt) toast(mt);
       }
       renderD4();
       const nx = $("#d4-ctl .key.next");
@@ -765,6 +778,7 @@
     if (!a) return;
     if (a.matches('a[href="#"]')) e.preventDefault();
     if (a.dataset.feature) ST.feature = a.dataset.feature;
+    if (a.dataset.mission) ST.mission = a.dataset.mission; // C2 [시작]: only this mission counts
     if (a.dataset.goseg) ST.seg = +a.dataset.goseg; // B4 → A3 opens the recommended segment
     if (a.dataset.toast) toast(a.dataset.toast);
     if (a.dataset.launch || a.matches(".dock-hit.dc")) { e.preventDefault(); return cur === "L0" ? launch() : go("A1"); }
@@ -788,13 +802,14 @@
     }
     if (a.id === "a4-ok") {
       ST.checked.add(ST.seg);
+      const mt = missionDone("rh");
       const nxt = D.segs.find(s => !ST.checked.has(s.n) && s.n > ST.seg) || D.segs.find(s => !ST.checked.has(s.n));
-      if (nxt) { ST.seg = nxt.n; toast(`확인 완료 · 다음은 ${nxt.n}번 ${nxt.sub} ${nxt.title}`); }
-      else toast("7개 구간을 모두 확인했어요. 이제 출발해도 좋아요");
+      if (nxt) ST.seg = nxt.n;
+      toast(mt || (nxt ? `확인 완료 · 다음은 ${nxt.n}번 ${nxt.sub} ${nxt.title}` : "7개 구간을 모두 확인했어요. 이제 출발해도 좋아요"));
       return go("A3");
     }
     // A5
-    if (a.id === "a5-skip") { ST.drove = true; stopSim(true); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
+    if (a.id === "a5-skip") { ST.drove = true; const mt = missionDone("drive"); stopSim(true); hush(); toast(mt ? `도착 · ${mt}` : "도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
     // B1
     if (a.matches(".b1pen,.b1mk")) {
       if (!parked()) return toast(moving() ? "주행 중에는 볼 수 없어요 · 주차(P)한 뒤 봐요" : "기어를 P로 바꾼 뒤 볼 수 있어요");
