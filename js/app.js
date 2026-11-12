@@ -7,7 +7,7 @@
 
   /* ------------------------------------------------------------ state */
   const ST = {
-    feature: "scc", b3: 4, voice: true, speed: 1, profile: "지민", d3view: "all",
+    feature: "scc", b1: 0, b3: 4, voice: true, speed: 1, profile: "지민", d3view: "all",
     navVoice: "", coachVoice: "", // voiceURI picked in the demo panel ("" = automatic)
   };
 
@@ -271,8 +271,8 @@
   addEventListener("hashchange", show);
 
   function enter(id) {
-    if (/^(B[1-4]|E[23])$/.test(id)) noRecords(id);
-    ({ A1: renderA1, A3: renderA3, A4: enterA4, A5: enterA5, B3: renderB3, B4: renderB4, C2: renderC2, D2: enterD2, D3: enterD3, D4: enterD4, F2: syncF2, F4: syncSettings }[id] || (() => {}))();
+    if (/^(B[134]|E[23])$/.test(id)) noRecords(id);
+    ({ A1: renderA1, A3: renderA3, A4: enterA4, A5: enterA5, B1: renderB1, B3: renderB3, B4: renderB4, C2: renderC2, D2: enterD2, D3: enterD3, D4: enterD4, F2: syncF2, F4: syncSettings }[id] || (() => {}))();
   }
   function leave(id) {
     hush();
@@ -287,7 +287,7 @@
     if (p) $("#a1-prog").style.width = `${doneOf(p) / p.missions.length * 100}%`;
     $("#a1-learn").style.width = `${stageOf("scc") / 3 * 100}%`;
   }
-  /* B1~B4, E2, E3 for a driver without records: cover the screen with an empty state */
+  /* B1, B3, B4, E2, E3 for a driver without records: cover the screen with an empty state */
   function noRecords(id) {
     const bd = $(`#${id} .bd`);
     let ov = $(".norec", bd);
@@ -511,6 +511,17 @@
     $("#a5-tbt-dist").textContent = SIM.finished ? "도착" : dist >= 1 ? dist.toFixed(1) + "km" : Math.max(10, Math.round(dist * 100) * 10) + "m";
     $("#a5-tbt-text").textContent = txt;
     $("#a5-lanes").style.display = next && next.n === 3 && dist < 0.7 ? "" : "none";
+  }
+
+  /* ------------------------------------------------------------ B1: tap a deduction (list or map) to see where it happened */
+  function renderB1() {
+    const p = D.pens[ST.b1];
+    $("#b1-pens").innerHTML = D.pens.map((q, i) => `<a href="#" class="b1pen${i === ST.b1 ? " on" : ""}" data-pen="${i}" aria-pressed="${i === ST.b1}">
+<span class="b1pen-ic">${icon(D.segs[q.seg - 1].ic, 18, "#33383F")}</span>
+<span style="flex:1;min-width:0"><span class="b1pen-t">${q.t}</span><span class="xs" style="display:block">${q.at}</span></span></a>`).join("");
+    $("#b1-mks").innerHTML = D.pens.map((q, i) => `<a href="#" class="b1mk${i === ST.b1 ? " on" : ""}" data-pen="${i}" style="left:${q.mk[0]}px;top:${q.mk[1]}px" aria-label="${q.t} 위치"></a>`).join("");
+    $("#b1-mapchip").textContent = p.at;
+    $("#b1-practice").dataset.goseg = p.seg;
   }
 
   /* ------------------------------------------------------------ B3 */
@@ -767,6 +778,11 @@
     }
     // A5
     if (a.id === "a5-skip") { ST.drove = true; stopSim(true); hush(); toast("도착 · 주행 기록을 자동 저장했어요"); return go("B1"); }
+    // B1
+    if (a.matches(".b1pen,.b1mk")) {
+      if (!parked()) return toast(moving() ? "주행 중에는 볼 수 없어요 · 주차(P)한 뒤 봐요" : "기어를 P로 바꾼 뒤 볼 수 있어요");
+      ST.b1 = +a.dataset.pen; return renderB1();
+    }
     // B3
     if (a.matches(".b3pt")) { ST.b3 = +a.dataset.seg; renderB3(); if (ST.b3 === 3) toast("이미 어려운 구간으로 표시한 곳이에요"); return; }
     if (a.matches(".pick")) { a.classList.toggle("on"); return; }
@@ -920,7 +936,7 @@
   /* ------------------------------------------------------------ boot */
   // Each screen lives in screens/<ID>.html. Order matters: it is the DOM order
   // inside #stage (and the order of the demo panel shortcuts).
-  const SCREENS = ["L0", "A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "B4", "C2", "D2", "D3", "D4", "E2", "E3", "F2", "F4"];
+  const SCREENS = ["L0", "A1", "A2", "A3", "A4", "A5", "B1", "B3", "B4", "C2", "D2", "D3", "D4", "E2", "E3", "F2", "F4"];
   function loadScreens() {
     return Promise.all(SCREENS.map(id => fetch(`screens/${id}.html`).then(r => {
       if (!r.ok) throw new Error(`screens/${id}.html: HTTP ${r.status}`);
