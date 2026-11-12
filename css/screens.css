@@ -71,6 +71,9 @@ body{margin:0;background:#F2F2F2}
 .num{font-feature-settings:"tnum";letter-spacing:-0.02em}
 .prog{height:6px;border-radius:3px;background:#ECECEF;overflow:hidden}
 .prog>i{display:block;height:100%;background:#1FB83A;border-radius:3px}
+.prog-seg{display:flex;gap:3px;height:6px}
+.prog-seg>i{flex:1;border-radius:3px;background:#ECECEF}
+.prog-seg>i.on{background:#1FB83A}
 .seg{display:flex;gap:4px}
 .seg>i{flex:1;height:5px;border-radius:3px;background:#E6E6EA}
 .seg>i.g{background:#1FB83A}.seg>i.b{background:#1F6FE0}
