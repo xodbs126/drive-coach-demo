@@ -71,6 +71,8 @@ body{margin:0;background:#F2F2F2}
 .num{font-feature-settings:"tnum";letter-spacing:-0.02em}
 .prog{height:6px;border-radius:3px;background:#ECECEF;overflow:hidden}
 .prog>i{display:block;height:100%;background:#1FB83A;border-radius:3px}
+.prog.segs{position:relative} /* 칸 나뉜 막대: style="--n:칸 수" */
+.prog.segs::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - 3px),#fff calc(100% / var(--n) - 3px) calc(100% / var(--n)))}
 .seg{display:flex;gap:4px}
 .seg>i{flex:1;height:5px;border-radius:3px;background:#E6E6EA}
 .seg>i.g{background:#1FB83A}.seg>i.b{background:#1F6FE0}
