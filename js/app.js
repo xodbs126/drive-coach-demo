@@ -542,11 +542,28 @@
   /* ------------------------------------------------------------ B4: first card follows the point saved in B3 */
   function renderB4() {
     const r = ST.b4;
-    if (!r) return; // not saved yet: keep the default card (회전교차로)
-    $("#b4-ic").innerHTML = icon(D.segs[r.seg - 1].ic, 28, "#0B2A5B");
-    $("#b4-title").innerHTML = D.b4titles[r.seg];
-    $("#b4-why").textContent = "방금 어렵다고 표시했어요" + (r.why.length ? " · " + r.why.join(", ") : "");
-    $("#b4-go").dataset.goseg = r.seg;
+    if (r) { // not saved yet: keep the default card (회전교차로)
+      $("#b4-title").innerHTML = D.b4titles[r.seg];
+      $("#b4-km").textContent = `출발 ${D.segs[r.seg - 1].km}km`;
+      $("#b4-map").dataset.b4map = r.seg;
+      $("#b4-go").dataset.goseg = r.seg;
+    }
+    /* card thumbnails: a clean crop of the A3 map (roads and route only) with a pin, or the control drawing */
+    $$("#B4 [data-b4map]").forEach(box => {
+      const s = D.segs[box.dataset.b4map - 1], [x, y] = s.pos, c = box.dataset.b4color;
+      const svg = $("#a3-hl").ownerSVGElement.cloneNode(true);
+      svg.querySelectorAll('#a3-hl, text, rect[fill="#E2E4E8"], circle[r="6"]').forEach(el => el.remove());
+      svg.setAttribute("viewBox", `${x - 170} ${y - 122} 340 244`);
+      box.querySelectorAll("svg, .b4-pin").forEach(el => el.remove());
+      box.prepend(svg);
+      box.insertAdjacentHTML("beforeend", `<span class="b4-pin" style="box-shadow:0 0 0 2px ${c},0 0 0 12px ${c}26,0 6px 14px rgba(0,0,0,.18)">${icon(s.ic, 22, "#0B2A5B")}</span>`);
+    });
+    $$("#B4 [data-b4ctl]").forEach(box => {
+      const f = D.features[box.dataset.b4ctl];
+      if (box.querySelector("svg")) return;
+      box.insertAdjacentHTML("afterbegin", CTRL.view(f.view, { compact: true, sel: [...new Set(f.seq.map(i => f.parts[i]))] }));
+      box.querySelector("svg").setAttribute("preserveAspectRatio", "xMidYMid meet");
+    });
   }
 
   /* ------------------------------------------------------------ C2 */
