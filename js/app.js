@@ -4,6 +4,19 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const D = window.D, IC = window.ICONS;
+  const CHOICES = ".pick,.ptile,#a4-view .tab,#d3-views .tab,#e2-tg .tab,#f4-freq .tab";
+  function selectChoice(selector, selected) {
+    $$(selector).forEach(el => {
+      const on = selected(el);
+      el.classList.toggle("on", on); el.setAttribute("aria-pressed", on);
+    });
+  }
+  function initAccessibility() {
+    $$(".tabs .tab.on").forEach(el => el.setAttribute("aria-current", "true"));
+    $("#F2 .prof").setAttribute("aria-current", "page");
+    $("#F4 .gear").setAttribute("aria-current", "page");
+    $$(CHOICES).forEach(el => { el.setAttribute("role", "button"); el.setAttribute("aria-pressed", el.classList.contains("on")); });
+  }
 
   /* ------------------------------------------------------------ state */
   const ST = {
@@ -709,7 +722,7 @@
       const done = doneOf(p);
       const st = done ? `${done} / ${p.missions.length} 완료` : "시작 전";
       const on = p.key === ST.prog;
-      return `<a href="#" data-prog="${p.key}" class="card" style="display:block;padding:13px 15px;border-radius:14px;${on ? "background:#EEF4FE;border-color:#B9D2F6;" : ""}">
+      return `<a href="#" data-prog="${p.key}" role="button" aria-pressed="${on}" class="card" style="display:block;padding:16px;border-radius:14px;${on ? "background:#EEF4FE;border-color:#B9D2F6;" : ""}">
 <div class="row"><span style="font-size:15px;font-weight:600">${p.title}</span><span class="xs" style="margin-left:auto">${st}</span></div>
 <div class="xs" style="margin-top:3px">${p.sub}</div><div class="prog-seg" style="margin-top:10px" aria-hidden="true">${p.missions.map((m, i) => `<i${missionState(p, m, i) === "done" ? ' class="on"' : ""}></i>`).join("")}</div></a>`;
     }).join("");
@@ -723,7 +736,7 @@
       const tagH = tag === "rec" ? '<span class="chip blue">추천</span>' : '<span class="chip gray">기본</span>';
       const kindH = `<span class="row xs" style="gap:4px">${icon(kind === "주행" ? "wheel" : "park", 14, "#646B76")}${kind}${need > 1 && st !== "done" ? ` · ${c}/${need}회` : ""}</span>`;
       return `<div class="row" style="flex:1;min-height:54px;gap:12px;padding:0 16px;border-top:1px solid #F0F0F3;${st === "go" ? "background:#F7FAFF;" : ""}">
-<span class="num" style="width:22px;height:22px;border-radius:50%;background:${st === "done" ? "#1FB83A" : "#EFEFF2"};color:${st === "done" ? "#fff" : "#4B515A"};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">${i + 1}</span>
+<span class="num" style="width:22px;height:22px;border-radius:50%;background:${st === "done" ? "#1A7F33" : "#EFEFF2"};color:${st === "done" ? "#fff" : "#4B515A"};font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">${i + 1}</span>
 <div style="flex:1"><div class="row" style="gap:6px"><span style="font-size:15px;font-weight:600">${title}</span>${tagH}</div><div style="margin-top:3px">${kindH}</div></div>${stH}</div>`;
     }).join("");
     $("#c2-detail").innerHTML = `<div style="padding:16px 16px 12px"><div class="row"><span class="h2">${p.title}</span><span class="chip ${done ? "green" : "gray"}" style="margin-left:8px">${badge}</span><span class="sm num" style="margin-left:auto">${done} / ${n} 완료</span></div>
@@ -766,7 +779,7 @@
     $("#d3-when").innerHTML = f.when + (f.note ? `<div class="xs" style="margin-top:5px;line-height:1.45;color:#1A5FC4">${f.note}</div>` : "");
     $("#d3-caut").innerHTML = f.caut.map(c => `<li>${c}</li>`).join("");
     // stage rows: done → check, current → 지금, later → 다음
-    const dot = (i, on) => `<span style="width:18px;height:18px;border-radius:50%;${on ? "background:#1F6FE0;color:#fff" : "border:1.5px solid #9AA0A8"};font-size:10px;display:flex;align-items:center;justify-content:center">${i}</span>`;
+    const dot = (i, on) => `<span style="width:20px;height:20px;border-radius:50%;${on ? "background:#1F6FE0;color:#fff" : "border:1.5px solid #9AA0A8"};font-size:12px;display:flex;align-items:center;justify-content:center;flex:none">${i}</span>`;
     $("#d3-s1-ic").innerHTML = n >= 1 ? icon("check", 17, "#1FB83A") : dot(1, true);
     const s1 = $("#d3-s1"); s1.textContent = n >= 1 ? "완료" : "지금"; s1.style.color = n >= 1 ? "#1A7F33" : "#1A5FC4";
     const s2 = $("#d3-s2"); s2.textContent = n >= 3 ? "완료" : n >= 1 ? "지금" : "다음"; s2.className = "chip " + (n >= 3 ? "green" : n >= 1 ? "blue" : "gray");
@@ -778,7 +791,7 @@
   }
   function renderD3Art() {
     const k = ST.feature, f = D.features[k], v = ST.d3view === "manual" && !f.manual ? "all" : ST.d3view;
-    $$("#d3-views .tab").forEach(t => t.classList.toggle("on", t.dataset.view === v));
+    selectChoice("#d3-views .tab", t => t.dataset.view === v);
     $('#d3-views [data-view="manual"]').style.display = f.manual ? "" : "none";
     const art = $("#d3-art");
     if (v === "zoom") {
@@ -811,7 +824,7 @@
     $("#d4-preview").textContent = f.preview[Math.min(st, f.preview.length - 1)];
     const g = f.gap ? f.gap[Math.min(st, f.gap.length - 1)] : 0;
     $("#d4-gap").innerHTML = f.gap ? [0, 1, 2, 3].map(i => `<i style="width:8px;height:${10 + i * 5}px;border-radius:2px;background:${i < g ? "#1F6FE0" : "#D6D6DB"}"></i>`).join("") : "";
-    $("#d4-steps").innerHTML = f.stepText.map((t, i) => `<div class="row" style="gap:8px;${i === st ? "font-weight:600" : i > st ? "color:#9AA0A8" : ""}">${i < st ? icon("check", 16, "#1FB83A") : `<span style="width:16px;height:16px;border-radius:50%;border:1.5px solid ${i === st ? "#1F6FE0" : "#C9CCD2"};display:inline-block"></span>`}${t}</div>`).join("");
+    $("#d4-steps").innerHTML = f.stepText.map((t, i) => `<div class="row" style="gap:8px;${i === st ? "font-weight:600" : i > st ? "color:#646B76" : ""}">${i < st ? icon("check", 16, "#1FB83A") : `<span style="width:16px;height:16px;border-radius:50%;border:1.5px solid ${i === st ? "#1F6FE0" : "#9AA0A8"};display:inline-block;flex:none"></span>`}${t}</div>`).join("");
     $("#d4-guide").style.display = done ? "none" : "flex";
     $("#d4-done").style.display = done ? "flex" : "none";
     if (!done) { $("#d4-now").textContent = `${st + 1}단계 · ${f.stepText[st]}`; $("#d4-hint").textContent = f.hint[st]; }
@@ -826,18 +839,18 @@
     if (D4S.step >= f.seq.length) return;
     if (f.seq[D4S.step] === i) {
       D4S.step++;
-      const m = $("#d4-msg"); m.className = "d4msg ok"; m.textContent = `좋아요! ${f.stepText[D4S.step - 1]} 완료`;
+      const m = $("#d4-msg"); m.className = "d4msg ok"; m.textContent = `${f.stepText[D4S.step - 1]} 완료`;
       if (D4S.step >= f.seq.length) {
         ST.learned[ST.feature] = true; syncLearn();
         sayUI(`${f.name} 학습을 완료했어요.`);
         const mt = missionDone("feat"); if (mt) toast(mt);
       }
       renderD4();
-      const nx = $("#d4-ctl .key.next");
+      const nx = $("#d4-ctl .key.next") || (D4S.step >= f.seq.length ? $("#d4-tgl") : null);
       if (nx && document.activeElement === document.body) nx.focus({ preventScroll: true });
     } else {
       el.classList.remove("shake"); el.getBoundingClientRect(); el.classList.add("shake");
-      const m = $("#d4-msg"); m.className = "d4msg warn"; m.textContent = `지금은 '${f.pad[f.seq[D4S.step]][0]}' 차례예요 · 파란색으로 빛나는 곳을 눌러요`;
+      const m = $("#d4-msg"); m.className = "d4msg warn"; m.textContent = `지금은 '${f.pad[f.seq[D4S.step]][0]}' 차례예요 · 파란색으로 표시한 곳을 눌러요`;
     }
   }
 
@@ -848,9 +861,10 @@
       const k = t.dataset.key; let on;
       if (k === "rec") on = ST.rec; else if (k === "coach") on = ST.coach; else on = !!ST.rev[k.slice(4)];
       t.classList.toggle("on", on); t.setAttribute("aria-checked", on);
-      if (k.startsWith("rev_")) t.classList.toggle("dis", !ST.learned[k.slice(4)]);
+      const disabled = k.startsWith("rev_") && !ST.learned[k.slice(4)];
+      t.classList.toggle("dis", disabled); t.setAttribute("aria-disabled", disabled);
     });
-    $$("#f4-freq .tab").forEach(t => t.classList.toggle("on", +t.dataset.f === ST.freq));
+    selectChoice("#f4-freq .tab", t => +t.dataset.f === ST.freq);
   }
   function setRev(key, on) {
     ST.rev[key] = on; syncSettings();
@@ -884,7 +898,7 @@
   }
   function syncF2() {
     F2.pick = ST.profile;
-    $$("#F2 .ptile").forEach(t => t.classList.toggle("on", t.dataset.prof === ST.profile));
+    selectChoice("#F2 .ptile", t => t.dataset.prof === ST.profile);
     const chip = $("#F2 .ptile .chip.blue"), tile = $(`#F2 .ptile[data-prof="${ST.profile}"]`);
     if (chip && tile && chip.parentNode !== tile) tile.prepend(chip); // '현재 운전자' follows the driver
   }
@@ -914,7 +928,7 @@
     if (a.id === "a4-play") return playA4();
     if (a.id === "a4-prev") { ST.seg = Math.max(1, ST.seg - 1); return enterA4(); }
     if (a.closest("#a4-view") && a.dataset.v) {
-      $$("#a4-view .tab").forEach(t => t.classList.toggle("on", t === a));
+      selectChoice("#a4-view .tab", t => t === a);
       $("#a4-stage").classList.toggle("three", a.dataset.v === "3d"); return;
     }
     if (a.id === "a4-ok") {
@@ -934,10 +948,15 @@
     }
     // B3
     if (a.matches(".b3pt")) { ST.b3 = +a.dataset.seg; renderB3(); if (ST.b3 === 3) toast("이미 어려운 구간으로 표시한 곳이에요"); return; }
-    if (a.matches(".pick")) { a.classList.toggle("on"); return; }
+    if (a.matches(".pick")) { a.classList.toggle("on"); a.setAttribute("aria-pressed", a.classList.contains("on")); return; }
     if (a.id === "b3-save") { ST.b4 = { seg: ST.b3, why: $$("#B3 .pick.on").map(p => p.textContent.trim()) }; toast(`'${D.b3names[ST.b3]}'을 어려운 구간으로 저장했어요`); return go("B4"); }
     // C2
-    if (a.dataset.prog) { ST.prog = a.dataset.prog; renderC2(); return; }
+    if (a.dataset.prog) {
+      const focused = document.activeElement === a;
+      ST.prog = a.dataset.prog; renderC2();
+      if (focused) $(`#c2-progs [data-prog="${ST.prog}"]`).focus({ preventScroll: true });
+      return;
+    }
     // D4
     if (a.matches(".key.act")) return pressVB(+a.dataset.vb, a);
     if (a.id === "d4-tgl") { setRev(ST.feature, !ST.rev[ST.feature]); renderD4(); return; }
@@ -947,14 +966,14 @@
     if (a.closest("#d3-views") && a.dataset.view) { ST.d3view = a.dataset.view; return renderD3Art(); }
     // E2
     if (a.closest("#e2-tg") && a.dataset.c) {
-      $$("#e2-tg .tab").forEach(t => t.classList.toggle("on", t === a));
+      selectChoice("#e2-tg .tab", t => t === a);
       $("#e2-same").style.display = a.dataset.c === "same" ? "" : "none";
       $("#e2-all").style.display = a.dataset.c === "all" ? "" : "none"; return;
     }
     // F2
     if (a.matches(".ptile")) {
       if (a.dataset.prof === "add") return toast("프로필 추가는 목업에서 생략했어요");
-      $$(".ptile").forEach(t => t.classList.toggle("on", t === a)); F2.pick = a.dataset.prof; return;
+      selectChoice(".ptile", t => t === a); F2.pick = a.dataset.prof; return;
     }
     if (a.id === "f2-go") { const was = ST.profile; setProfile(F2.pick); if (ST.profile !== was) toast(`${ST.profile} 님 프로필로 바꿨어요`); return go("A1"); }
     // F4
@@ -1067,9 +1086,9 @@
   });
   document.addEventListener("keydown", (e) => {
     if (e.target.matches("textarea,input")) return;
-    // keys and spots in the 2D drawings are SVG groups: Enter/Space presses them like buttons
-    const k = e.target.closest(".key.act,.spot");
-    if (k && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); k.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
+    // Custom switches, choices and SVG keys use the same Enter/Space activation as buttons.
+    const k = e.target.closest('.key.act,.spot,.tgl,[role="button"]');
+    if (k && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); k.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })); return; }
     if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.target.matches("select")) { e.preventDefault(); if (!e.repeat) setPedal(e.key === "ArrowUp" ? "accel" : "brake"); return; }
     if (e.key === "`") { P.hidden = !P.hidden; syncPanel(); }
     else if (e.key === "Escape") P.hidden = true;
@@ -1093,6 +1112,7 @@
     }))).then(parts => $("#splash").insertAdjacentHTML("beforebegin", parts.join("")));
   }
   loadScreens().then(() => {
+    initAccessibility();
     buildPanel();
     syncVoiceSelects();
     if (!location.hash) history.replaceState(null, "", "#L0");
