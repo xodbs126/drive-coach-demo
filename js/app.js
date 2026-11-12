@@ -283,6 +283,9 @@
   /* ------------------------------------------------------------ A1 home */
   function renderA1() {
     $("#a1-segs").textContent = `주요 구간 7곳 · ${ST.checked.size}곳 확인` + (prof().records ? " · 어려운 구간 1곳" : "");
+    const p = D.progs.find(q => q.key === prof().prog);
+    if (p) $("#a1-prog").style.width = `${doneOf(p) / p.missions.length * 100}%`;
+    $("#a1-learn").style.width = `${stageOf("scc") / 3 * 100}%`;
   }
   /* B1~B4, E2, E3 for a driver without records: cover the screen with an empty state */
   function noRecords(id) {
