@@ -82,7 +82,14 @@ window.D = {
     [12.24, 12.31, "L"], // 7 회사 정문 좌회전
   ],
 
-  brief: "어제 어렵다고 표시한 시청 사거리 좌회전이 있어요. 출발 전에 리허설로 살펴보세요.",
+  /* A1 '같은 길 성장' graph: same commute before today (11/9 90 is the drive after rehearsal) */
+  growth: [["11/5", 74], ["11/6", 82], ["11/8", 86]],
+  /* A1 '지난번 이 길': 11/8 counts by the three scored items (E3: −4, −4, −3, −3 = 86점). A1 shows counts (n) only, v = points for reference */
+  lastDrive: { date: "11/8", score: 86, pens: [
+    { ic: "spd", t: "제한속도 초과", v: 4, n: 1 },
+    { ic: "acc", t: "급가속", v: 3, n: 1 },
+    { ic: "dec", t: "급감속", v: 7, n: 2 },
+  ] },
 
   /* B1 today's deductions (11/9). seg = D.segs number, mk = marker spot on the B1 map card (px) */
   pens: [
@@ -195,17 +202,13 @@ window.D = {
     지민: { av: "지", records: true, prog: "commute", seg: 1, checked: [], learned: { wiper: true }, rev: { wiper: true } },
     민수: { av: "민", records: false, prog: "return", seg: 1, checked: [], learned: {}, rev: {},
       stage: { scc: 1, lka: 1, wiper: 1, autohold: 1, defog: 1 },
-      say: "오랜만의 운전이에요. 출발 전에 첫길 리허설로 길을 먼저 살펴보세요.",
       t: {
         hello: "민수 님 · 장롱면허 복귀",
-        recv: "최근 사용 · 3일 전",
         score: "—",
-        scoreSub: "아직 운전 점수가 없어요",
-        brief: "오랜만의 운전이에요. 출발 전에 <b style=\"font-weight:700\">첫길 리허설</b>로 길을 먼저 살펴보세요.",
-        why: "근거 · 장롱면허 복귀 · 주행 기록 없음",
+        scoreSub: "주행을 마치면 점수가 쌓여요",
+        lastNone: "첫 주행을 마치면 감점 요약이 여기 보여요",
         hardSub: "복잡한 교차로 · 출발 2.6km",
         progT: "장롱면허 복귀",
-        growth: "주행을 마치면 점수가 쌓여요",
         delRec: "민수 님의 학습 기록",
       } },
   },

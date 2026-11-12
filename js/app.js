@@ -282,10 +282,25 @@
 
   /* ------------------------------------------------------------ A1 home */
   function renderA1() {
-    $("#a1-segs").textContent = `주요 구간 7곳 · ${ST.checked.size}곳 확인` + (prof().records ? " · 어려운 구간 1곳" : "");
+    const L = D.lastDrive;
+    $("#a1-last-h").textContent = `지난번 이 길 · ${L.date}`;
+    $("#a1-last-s").textContent = `${L.score}점`;
+    $("#a1-last").innerHTML = L.pens.map(q => `<div class="a1-pen"><div class="row" style="gap:5px">${icon(q.ic, 17, "#1A9BE8")}<span>${q.t}</span></div>
+<div class="num"><b>${q.n}</b><span>회</span></div></div>`).join("");
+    const bars = (all, n) => Array.from({ length: all }, (_, i) => `<i${i < n ? ' class="on"' : ""}></i>`).join("");
     const p = D.progs.find(q => q.key === prof().prog);
-    if (p) { $("#a1-prog").style.width = `${doneOf(p) / p.missions.length * 100}%`; $("#a1-progs").textContent = `미션 ${doneOf(p)}/${p.missions.length}`; }
-    $("#a1-learn").style.width = `${stageOf("scc") / 3 * 100}%`;
+    if (p) { $("#a1-prog").innerHTML = bars(p.missions.length, doneOf(p)); $("#a1-progs").textContent = `${doneOf(p)}/${p.missions.length}`; }
+    $("#a1-learn").innerHTML = bars(3, stageOf("scc"));
+    $("#a1-spark").innerHTML = spark(D.growth);
+    $("#a1-spark").setAttribute("aria-label", "같은 길 점수 " + D.growth.map(p => `${p[0]} ${p[1]}점`).join(", "));
+  }
+  /* A1 '같은 길 성장': small score line, dates under each point */
+  function spark(pts) {
+    const x = (i) => 14 + i * (122 / (pts.length - 1)), y = (v) => 46 - (v - 72) * 2, last = pts.length - 1;
+    return `<polyline points="${pts.map((p, i) => `${x(i)},${y(p[1])}`).join(" ")}" fill="none" stroke="#1A9BE8" stroke-width="2" stroke-linejoin="round"/>`
+      + pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p[1])}" r="${i === last ? 4 : 3}" fill="${i === last ? "#1A9BE8" : "#fff"}" stroke="#1A9BE8" stroke-width="2"/>`
+      + `<text x="${x(i)}" y="${y(p[1]) - 8}" text-anchor="middle" font-size="12" font-weight="${i === last ? 700 : 500}" fill="${i === last ? "#1A6FD0" : "#646B76"}">${p[1]}</text>`
+      + `<text x="${x(i)}" y="56" text-anchor="middle" font-size="11" fill="#646B76">${p[0]}</text>`).join("");
   }
   /* B1, B3, B4, E2, E3 for a driver without records: cover the screen with an empty state */
   function noRecords(id) {
@@ -787,7 +802,7 @@
     if (a.dataset.say) {
       e.preventDefault();
       const s = D.segs[ST.seg - 1];
-      sayUI({ brief: prof().say || D.brief, seg: segBrief(s), feature: D.features[ST.feature].say }[a.dataset.say]);
+      sayUI({ seg: segBrief(s), feature: D.features[ST.feature].say }[a.dataset.say]);
       toast("음성 안내 재생 중");
       return;
     }
