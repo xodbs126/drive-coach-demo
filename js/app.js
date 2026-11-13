@@ -357,7 +357,7 @@
   addEventListener("hashchange", show);
 
   function enter(id) {
-    if (/^(B[134]|E[23])$/.test(id)) noRecords(id);
+    if (/^(B[134]|E2)$/.test(id)) noRecords(id);
     ({ A1: renderA1, A3: renderA3, A4: enterA4, A5: enterA5, B1: renderB1, B3: renderB3, B4: renderB4, C2: renderC2, D2: enterD2, D3: enterD3, D4: enterD4, F2: syncF2, F4: syncSettings }[id] || (() => {}))();
   }
   function leave(id) {
@@ -388,7 +388,7 @@
       + `<text x="${x(i)}" y="${y(p[1]) - 8}" text-anchor="middle" font-size="12" font-weight="${i === last ? 700 : 500}" fill="${i === last ? "#1A6FD0" : "#646B76"}">${p[1]}</text>`
       + `<text x="${x(i)}" y="56" text-anchor="middle" font-size="11" fill="#646B76">${p[0]}</text>`).join("");
   }
-  /* B1, B3, B4, E2, E3 for a driver without records: cover the screen with an empty state */
+  /* B1, B3, B4, E2 for a driver without records: cover the screen with an empty state */
   function noRecords(id) {
     const bd = $(`#${id} .bd`);
     let ov = $(".norec", bd);
@@ -1104,7 +1104,7 @@
   /* ------------------------------------------------------------ boot */
   // Each screen lives in screens/<ID>.html. Order matters: it is the DOM order
   // inside #stage (and the order of the demo panel shortcuts).
-  const SCREENS = ["L0", "A1", "A2", "A3", "A4", "A5", "B1", "B3", "B4", "C2", "D2", "D3", "D4", "E2", "E3", "F2", "F4"];
+  const SCREENS = ["L0", "A1", "A2", "A3", "A4", "A5", "B1", "B3", "B4", "C2", "D2", "D3", "D4", "E2", "F2", "F4"];
   function loadScreens() {
     return Promise.all(SCREENS.map(id => fetch(`screens/${id}.html`).then(r => {
       if (!r.ok) throw new Error(`screens/${id}.html: HTTP ${r.status}`);

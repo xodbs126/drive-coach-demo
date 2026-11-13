@@ -84,7 +84,7 @@ window.D = {
 
   /* A1 '같은 길 성장' graph: same commute before today (11/9 90 is the drive after rehearsal) */
   growth: [["11/5", 74], ["11/6", 82], ["11/8", 86]],
-  /* A1 '지난번 이 길': 11/8 counts by the three scored items (E3: −4, −4, −3, −3 = 86점). A1 shows counts (n) only, v = points for reference */
+  /* A1 '지난번 이 길': 11/8 counts by the three scored items (−4, −4, −3, −3 = 86점). A1 shows counts (n) only, v = points for reference */
   lastDrive: { date: "11/8", score: 86, pens: [
     { ic: "spd", t: "제한속도 초과", v: 4, n: 1 },
     { ic: "acc", t: "급가속", v: 3, n: 1 },
@@ -196,7 +196,7 @@ window.D = {
   },
 
   /* driver profiles. 지민 keeps the text written in the screen files.
-     records: false → report screens (B1, B3, B4, E2, E3) show an empty state.
+     records: false → report screens (B1, B3, B4, E2) show an empty state.
      t: text for [data-pf] elements. stage: feature learning stage (0~3) */
   profiles: {
     지민: { av: "지", records: true, prog: "commute", seg: 1, checked: [], learned: { wiper: true }, rev: { wiper: true } },

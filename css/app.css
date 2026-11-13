@@ -100,7 +100,7 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .d4msg.ok{display:block;background:#E6F6EA;color:#1A7F33}
 .d4msg.warn{display:block;background:#FFF4E5;color:#8A5300}
 
-/* ---------- B1 · B3 · B4 · E2 · E3: 기록이 없는 프로필 ---------- */
+/* ---------- B1 · B3 · B4 · E2: 기록이 없는 프로필 ---------- */
 /* ---------- cluster: 3D car (js/car3d.js) · limit sign ---------- */
 .cl-car3d{position:absolute;left:10px;top:176px;width:340px;height:270px;border-radius:12px}
 #stage.car3d-on .cl-cars{display:none}
