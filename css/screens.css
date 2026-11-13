@@ -36,7 +36,8 @@ body{margin:0;background:#F2F2F2}
 .app{position:absolute;left:380px;top:50px;width:890px;height:584px;background:#F6F6F7;border-radius:22px;overflow:hidden}
 .hd{position:absolute;left:0;right:0;top:0;height:62px;display:flex;align-items:center;padding:0 18px;gap:14px}
 .logo{display:flex;align-items:center;gap:9px;font-size:18px;font-weight:600;white-space:nowrap}
-.logo .ic{width:30px;height:30px;border-radius:9px;background:var(--dc-blue);display:flex;align-items:center;justify-content:center}
+.logo .ic{width:30px;height:30px;display:flex;flex:none}
+.logo .ic img{width:100%;height:100%}
 .tabs{display:flex;background:#EBEBEE;border-radius:12px;padding:3px;gap:2px;margin-left:auto}
 .tab{display:inline-flex;align-items:center;justify-content:center;min-height:40px;min-width:44px;font-size:14px;padding:8px 12px;border-radius:9px;color:#33383F;white-space:nowrap;letter-spacing:0}
 .tabs .tab{min-height:44px}

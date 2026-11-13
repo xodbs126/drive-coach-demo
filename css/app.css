@@ -149,11 +149,11 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 .l0-tile{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.82);border:1px solid #E6E6E9;border-radius:18px;padding:18px;transition:transform .12s}
 .l0-tile:active{transform:scale(.98)}
 .l0-tile.dc{border:2px solid #1F6FE0}
-.l0-tile.dc .l0-ic{background:#1F6FE0!important}
+.l0-tile.dc .l0-ic img{width:100%;height:100%}
 .l0-ic{width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;flex:none}
 .l0-t{font-size:17px;font-weight:600}
 .dock-hit{position:absolute;top:656px;width:46px;height:46px;border-radius:14px;z-index:3}
-.dock-hit.dc{left:649px}
+.dock-hit.dc{left:649px;background:url(../assets/logo.png) center/42px no-repeat} /* 새 로고를 dock.png 속 예전 아이콘 위에 덮어요 */
 .dock-hit.grid{left:703px}
 .dock-hit:focus-visible{outline:2px solid #1F6FE0}
 .dock-cover{position:absolute;left:664px;top:700px;width:16px;height:10px;background:#F2F2F2;z-index:2}
@@ -167,7 +167,8 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 #splash.out{animation:spClose .38s ease-in both}
 @keyframes spOpen{from{transform:scale(.06);opacity:.4;border-radius:60px}to{transform:scale(1);opacity:1;border-radius:22px}}
 @keyframes spClose{to{opacity:0;transform:scale(1.03)}}
-.sp-logo{width:116px;height:116px;border-radius:32px;background:#1F6FE0;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(17,20,24,.08);opacity:0}
+.sp-logo{width:116px;height:116px;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(17,20,24,.08);opacity:0}
+.sp-logo img{width:100%;height:100%}
 #splash.on .sp-logo{animation:spPop .4s .2s cubic-bezier(.22,1,.36,1) both}
 @keyframes spPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
 .sp-name{margin-top:24px;font-size:36px;font-weight:600;letter-spacing:-0.02em;opacity:0}

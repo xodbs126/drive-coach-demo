@@ -67,7 +67,7 @@ js/controls.js      window.CTRL: 실내·조작부 2D 그림 (D2 미리보기, D
 serve.py            로컬 미리보기 서버 (.js MIME 고정)
 js/car3d.js         계기판 가운데 3D 차량 (ES 모듈, Three.js). 문·트렁크·브레이크등·후진등·방향지시등이 차량 상태를 따라가요
 vendor/             three.module.min.js (car3d.js가 써요), OrbitControls.js (지금은 안 써요) · r170, 로컬 번들 · 수정 금지
-assets/             차량·독·상태바 PNG (팀 디자인 시안에서 잘라 쓴 것)
+assets/             차량·독·상태바 PNG (팀 디자인 시안에서 잘라 쓴 것) · logo.png 앱 로고(헤더·L0·스플래시·탭 아이콘, 독 그림 속 아이콘은 `.dock-hit.dc` 배경으로 덮어요)
 assets/manual/      취급설명서 그림 (D3 '설명서 그림' 탭, 출처는 폴더의 README.md)
 fonts/              Pretendard Variable
 ```
