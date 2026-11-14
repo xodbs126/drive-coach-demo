@@ -91,7 +91,7 @@
     turn: null, doors: { fl: false, fr: false, rl: false, rr: false, trunk: false } };
   const ROAD_LIMIT = 50; // 시연 패널로 움직일 때의 도로 제한속도 (집 근처 도심 · 시뮬레이션)
   const doorOpen = () => Object.values(VS.doors).some(Boolean);
-  const LOCK = { A3: "첫길 리허설", A4: "구간 상세 학습", B3: "지도 분석", D3: "실내 그림 조작", D4: "가상 실습", F2: "프로필 전환" };
+  const LOCK = { A3: "초행길 리허설", A4: "구간 상세 학습", B3: "지도 분석", D3: "실내 그림 조작", D4: "가상 실습", F2: "프로필 전환" };
   const moving = () => VS.speed >= 0.5;
   /* driving state: "parked" (P) · "idling" (stopped in D/R/N) · "moving" */
   const uxState = () => (moving() ? "moving" : VS.gear === "P" ? "parked" : "idling");
@@ -400,7 +400,7 @@
 <div class="h2">${after ? "주행을 마쳤어요" : "아직 주행 기록이 없어요"}</div>
 <div class="sm" style="line-height:1.55">${after ? "집 → 회사 · 12.4km · 시뮬레이션<br/>점수 리포트 예시는 지민 프로필에만 있어요."
     : `${ST.profile} 님이 주행을 마치면 점수와 리포트가 여기에 쌓여요.<br/>기록은 이 차량 안에만 저장돼요.`}</div>
-<div class="row" style="gap:8px;margin-top:12px"><a href="#A3" class="btn pri" style="width:170px">첫길 리허설 하기</a><a href="#F2" class="btn sec" style="width:150px">프로필 바꾸기</a></div></div>`;
+<div class="row" style="gap:8px;margin-top:12px"><a href="#A3" class="btn pri" style="width:170px">초행길 리허설 하기</a><a href="#F2" class="btn sec" style="width:150px">프로필 바꾸기</a></div></div>`;
   }
 
   /* ------------------------------------------------------------ A3 rehearsal */
