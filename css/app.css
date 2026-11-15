@@ -210,6 +210,7 @@ html,body{margin:0;height:100%;background:#0E0F11;overflow:hidden}
 @media (prefers-reduced-motion:reduce){
   .scr.on,.navsub.on,.dock-ring,.coachbar.talk #a5-coach-ic,.ctl .key.next .glow,.ctl .spot .halo,.ctl .key.shake{animation:none}
   .scr *,.scr *::before,.scr *::after{transition:none!important;scroll-behavior:auto!important}
-  #splash.on,#splash.out,#splash.on .sp-logo,#splash.on .sp-name,#splash.on .sp-tag,#splash.on .sp-bar,#splash.on .sp-bar i,#splash.on .sp-st,#splash.on .sp-foot{animation:none;opacity:1;transform:none}
-  #splash .sp-bar i{width:100%;transform:none}
+  #splash.on,#splash.out,#splash.on .sp-logo,#splash.on .sp-name,#splash.on .sp-tag,#splash.on .sp-bar,#splash.on .sp-st,#splash.on .sp-foot{animation:none;opacity:1;transform:none}
+  /* The loading bar is progress information, not decoration: keep a plain linear fill. */
+  #splash.on .sp-bar i{animation:spFill 2.5s linear both}
 }
